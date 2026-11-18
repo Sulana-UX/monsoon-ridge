@@ -40,7 +40,8 @@ const str = (v, field, { min = 0, max, pattern } = {}) => {
 }
 
 /** Validates and normalises the createBooking payload. Unknown fields are dropped. */
-export function parseBookingRequest(data) {
+/** staff: true = booking made by hotel staff (walk-in / phone): guest email is optional. */
+export function parseBookingRequest(data, { staff = false } = {}) {
   if (!data || typeof data !== 'object') bad('Missing booking details.')
   const { roomId, checkIn, checkOut, guests, payment, guest } = data
 
@@ -61,7 +62,7 @@ export function parseBookingRequest(data) {
   const g = {
     firstName: str(guest.firstName, 'First name', { min: 1, max: 60 }),
     lastName: str(guest.lastName, 'Last name', { min: 1, max: 60 }),
-    email: str(guest.email, 'Email', { min: 3, max: 254, pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ }).toLowerCase(),
+    email: str(guest.email ?? '', 'Email', { min: staff ? 0 : 3, max: 254, pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ }).toLowerCase(),
     phone: str(guest.phone, 'Phone', { min: 9, max: 25, pattern: /^\+?[\d\s()-]{9,25}$/ }),
     country: str(guest.country, 'Country', { min: 1, max: 40 }),
     arrival: str(guest.arrival ?? '', 'Arrival time', { max: 5, pattern: /^([01]\d|2[0-3]):[0-5]\d$/ }),

@@ -65,6 +65,9 @@ export const api = {
   deleteRoom: (id) => call(`/api/admin/rooms/${encodeURIComponent(id)}`, null, 'DELETE'),
   signUpload: () => call('/api/admin/uploads/sign'),
   // front desk (staff)
+  createStaffBooking: (booking) => call('/api/admin/bookings', booking),
+  createBlock: (block) => call('/api/admin/blocks', block),
+  deleteBlock: (id) => call(`/api/admin/blocks/${encodeURIComponent(id)}`, null, 'DELETE'),
   setBookingStatus: (ref, action) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/status`, { action }),
   addNote: (ref, text) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/notes`, { text }),
   deleteNote: (ref, id) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/notes/${encodeURIComponent(id)}`, null, 'DELETE'),

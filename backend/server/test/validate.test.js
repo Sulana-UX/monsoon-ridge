@@ -167,3 +167,27 @@ test('no-show frees the rest of the stay; undo check-in works', () => {
   assert.equal(planStatusChange(stay('CheckedIn'), 'undo-check-in', '2026-12-10').status, 'Confirmed')
   assert.throws(() => planStatusChange(stay(), 'delete-everything', '2026-12-10'), /Unknown action/)
 })
+
+/* ---------- room blocks + staff bookings ---------- */
+import { parseBlockInput } from '../src/blockRules.js'
+
+test('room block validation', () => {
+  const ok = parseBlockInput({ roomId: 'family-villa', from: '2026-12-01', to: '2026-12-05', units: '1', reason: ' Renovation ' }, '2026-11-20')
+  assert.deepEqual(ok, { roomId: 'family-villa', from: '2026-12-01', to: '2026-12-05', nights: 4, units: 1, reason: 'Renovation' })
+  const no = (patch, re) => assert.throws(() => parseBlockInput({ roomId: 'family-villa', from: '2026-12-01', to: '2026-12-05', units: 1, reason: 'Renovation', ...patch }, '2026-11-20'), re)
+  no({ from: '2026-11-01' }, /past/)
+  no({ to: '2026-12-01' }, /after the start/)
+  no({ to: '2027-06-01' }, /at most/)
+  no({ units: 0 }, /whole number/)
+  no({ reason: '' }, /reason/)
+  no({ roomId: '../x' }, /Unknown room/)
+})
+
+test('staff bookings may omit the guest email; online bookings may not', () => {
+  const d = valid()
+  d.guest.email = ''
+  assert.throws(() => parseBookingRequest(d), /Email/)
+  assert.equal(parseBookingRequest(d, { staff: true }).guest.email, '')
+  d.guest.email = 'not-an-email'
+  assert.throws(() => parseBookingRequest(d, { staff: true }), /Email/)
+})

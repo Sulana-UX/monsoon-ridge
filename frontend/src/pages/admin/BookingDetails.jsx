@@ -31,7 +31,11 @@ export default function BookingDetails() {
 
   // Status history, oldest first
   const timeline = [
-    { icon: PlusCircle, label: 'Booked online', at: b.createdAt, by: b.accountEmail },
+    {
+      icon: PlusCircle,
+      label: b.source === 'phone' ? 'Phone booking by staff' : b.source === 'walk-in' ? 'Walk-in booking by staff' : 'Booked online',
+      at: b.createdAt, by: b.createdBy || b.accountEmail,
+    },
     b.checkedInAt && { icon: LogIn, label: 'Checked in', at: b.checkedInAt },
     b.checkedOutAt && { icon: LogOut, label: b.checkOutActual && b.checkOutActual < b.checkOut ? `Checked out early (${prettyDate(b.checkOutActual)})` : 'Checked out', at: b.checkedOutAt },
     b.noShowAt && { icon: UserX, label: 'Marked as no-show', at: b.noShowAt },
@@ -75,7 +79,7 @@ export default function BookingDetails() {
           <h3 className="bd-title">Guest</h3>
           <Person name={guestName(b)} detail={b.guest?.country} />
           <ul className="bd-list">
-            <li><Mail size={16} /> <a href={`mailto:${b.guest?.email}`}>{b.guest?.email}</a></li>
+            {b.guest?.email && <li><Mail size={16} /> <a href={`mailto:${b.guest.email}`}>{b.guest.email}</a></li>}
             <li><Phone size={16} /> <a href={`tel:${(b.guest?.phone || '').replace(/[^\d+]/g, '')}`}>{b.guest?.phone}</a></li>
             <li><Globe size={16} /> {b.guest?.country}</li>
             {b.guest?.arrival && <li><Clock size={16} /> Expected arrival {b.guest.arrival}</li>}

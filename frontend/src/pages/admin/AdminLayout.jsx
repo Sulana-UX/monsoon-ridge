@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, CalendarDays, CalendarRange, Users, LogOut, BedDouble, Menu, ChevronRight } from 'lucide-react'
-import { useBookings } from '../../lib/bookings'
+import { LayoutDashboard, CalendarDays, CalendarRange, CalendarOff, Users, LogOut, BedDouble, Menu, ChevronRight } from 'lucide-react'
+import { useBookings, useBlocks } from '../../lib/bookings'
 import { useAuth } from '../../context/AuthContext'
 import { useAllRooms } from '../../context/RoomsContext'
 import { prettyDate, today } from '../../utils'
@@ -14,6 +14,7 @@ const NAV = [
   { to: '/admin/bookings', label: 'Bookings', icon: CalendarDays, count: 'upcoming' },
   { to: '/admin/calendar', label: 'Calendar', icon: CalendarRange },
   { to: '/admin/rooms', label: 'Rooms', icon: BedDouble },
+  { to: '/admin/blocks', label: 'Blocked dates', icon: CalendarOff },
   { to: '/admin/guests', label: 'Guests', icon: Users },
 ]
 
@@ -33,9 +34,12 @@ export default function AdminLayout() {
   // One live subscription each, shared by every tab
   const bookingsState = useBookings({ all: true, max: 1000 })
   const roomsState = useAllRooms()
+  // Blocks are optional data: if the rules aren't deployed yet, the dashboard still works
+  const { blocks } = useBlocks()
   const data = {
     bookings: bookingsState.bookings,
     rooms: roomsState.rooms,
+    blocks,
     loading: bookingsState.loading || roomsState.loading,
     error: bookingsState.error || roomsState.error,
   }

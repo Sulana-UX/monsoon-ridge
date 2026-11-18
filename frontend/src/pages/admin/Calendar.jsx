@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, CalendarDays, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, X, Wrench } from 'lucide-react'
 import { occupies, statusClass, statusLabel, guestName } from '../../lib/status'
 import { prettyDate, today } from '../../utils'
 import { Person } from './Avatar'
@@ -28,7 +28,7 @@ const level = (booked, units) => {
 const iso = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 
 export default function Calendar() {
-  const { bookings, rooms } = useOutletContext()
+  const { bookings, rooms, blocks = [] } = useOutletContext()
   const t = today()
   const [ym, setYm] = useState(() => ({ y: Number(t.slice(0, 4)), m: Number(t.slice(5, 7)) - 1 }))
   const [picked, setPicked] = useState(null) // { roomId, date }
@@ -56,7 +56,21 @@ export default function Calendar() {
     return g
   }, [bookings, activeRooms, days])
 
-  const totals = days.map((day) => activeRooms.reduce((s, r) => s + (grid[r.id]?.[day.date] || 0), 0))
+  // blocked[roomId][date] = rooms taken out of sale (maintenance / events)
+  const blocked = useMemo(() => {
+    const g = {}
+    for (const bl of blocks) {
+      for (const day of days) {
+        if (day.date >= bl.from && day.date < bl.to) {
+          g[bl.roomId] = g[bl.roomId] || {}
+          g[bl.roomId][day.date] = (g[bl.roomId][day.date] || 0) + bl.units
+        }
+      }
+    }
+    return g
+  }, [blocks, days])
+
+  const totals = days.map((day) => activeRooms.reduce((s, r) => s + (grid[r.id]?.[day.date] || 0) + (blocked[r.id]?.[day.date] || 0), 0))
   const monthName = new Date(ym.y, ym.m, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
   const shift = (n) => {
     setPicked(null)
@@ -66,6 +80,9 @@ export default function Calendar() {
   const pickedRoom = picked && rooms.find((r) => r.id === picked.roomId)
   const pickedGuests = picked
     ? bookings.filter((b) => (picked.roomId === 'all' || b.roomId === picked.roomId) && occupies(b, picked.date))
+    : []
+  const pickedBlocks = picked
+    ? blocks.filter((bl) => (picked.roomId === 'all' || bl.roomId === picked.roomId) && picked.date >= bl.from && picked.date < bl.to)
     : []
 
   return (
@@ -107,13 +124,15 @@ export default function Calendar() {
                     <small>{r.type} · {r.units} room{r.units === 1 ? '' : 's'}</small>
                   </th>
                   {days.map((day) => {
-                    const n = grid[r.id]?.[day.date] || 0
+                    const booked = grid[r.id]?.[day.date] || 0
+                    const blk = blocked[r.id]?.[day.date] || 0
+                    const n = booked + blk
                     const isPicked = picked?.roomId === r.id && picked.date === day.date
                     return (
                       <td key={day.date} className={`${day.date === t ? 'is-today' : ''} ${day.date < t ? 'is-past' : ''}`}>
                         <button
-                          className={`cal-cell ${level(n, r.units)} ${isPicked ? 'is-picked' : ''}`}
-                          title={`${r.name} · ${prettyDate(day.date)} · ${n} of ${r.units} booked${n >= r.units && r.units ? ' (Full)' : ''}`}
+                          className={`cal-cell ${level(n, r.units)} ${blk ? 'is-blocked' : ''} ${isPicked ? 'is-picked' : ''}`}
+                          title={`${r.name} · ${prettyDate(day.date)} · ${booked} booked${blk ? ` + ${blk} blocked` : ''} of ${r.units}${n >= r.units && r.units ? ' (Full)' : ''}`}
                           onClick={() => setPicked(isPicked ? null : { roomId: r.id, date: day.date })}
                         >
                           {n || ''}
@@ -142,6 +161,7 @@ export default function Calendar() {
         <div className="cal-legend" aria-label="Legend">
           <span className="muted small">Rooms booked:</span>
           {STEPS.map((s) => <span key={s.cls} className="cal-key"><i className={`cal-swatch ${s.cls}`} /> {s.label}</span>)}
+          <span className="cal-key"><i className="cal-swatch lv2 is-blocked" /> Includes blocked rooms</span>
           <span className="muted small cal-legend-note">Bottom row = % of all rooms</span>
         </div>
       </section>
@@ -155,8 +175,11 @@ export default function Calendar() {
             </div>
             <button className="icon-btn" onClick={() => setPicked(null)} aria-label="Close"><X size={16} /></button>
           </div>
+          {pickedBlocks.map((bl) => (
+            <p key={bl.id} className="cal-block-note"><Wrench size={15} /> {bl.units} × {bl.roomName} blocked: {bl.reason} ({prettyDate(bl.from)} → {prettyDate(bl.to)}) · <Link to="/admin/blocks">Manage</Link></p>
+          ))}
           {pickedGuests.length === 0 ? (
-            <p className="today-empty">No one booked. This night is free to sell.</p>
+            <p className="today-empty">No guests booked this night.</p>
           ) : (
             <ul className="recent-list">
               {pickedGuests.map((b) => (

@@ -30,6 +30,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Room blocks (maintenance / private events): staff read, API-only writes.
+    match /blocks/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // Per-night room counts: server only.
     match /inventory/{id} {
       allow read, write: if false;

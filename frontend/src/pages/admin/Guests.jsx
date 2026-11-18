@@ -15,9 +15,10 @@ export default function Guests() {
     const map = new Map()
     for (const b of bookings) {
       const email = (b.guest?.email || b.accountEmail || '').toLowerCase()
-      if (!email) continue
-      const g = map.get(email) || {
-        email, name: `${b.guest?.firstName ?? ''} ${b.guest?.lastName ?? ''}`.trim(), phone: b.guest?.phone,
+      const key = email || (b.guest?.phone || '').replace(/D/g, '')
+      if (!key) continue
+      const g = map.get(key) || {
+        key, email, name: `${b.guest?.firstName ?? ''} ${b.guest?.lastName ?? ''}`.trim(), phone: b.guest?.phone,
         country: b.guest?.country, stays: 0, nights: 0, spent: 0, cancelled: 0, last: null, next: null,
       }
       if (isLive(b)) {
@@ -27,7 +28,7 @@ export default function Guests() {
         if (b.checkOut <= t && (!g.last || b.checkIn > g.last)) g.last = b.checkIn
         if (b.checkOut > t && (!g.next || b.checkIn < g.next)) g.next = b.checkIn
       } else g.cancelled += 1
-      map.set(email, g)
+      map.set(key, g)
     }
     return [...map.values()].sort((a, b) => b.spent - a.spent)
   }, [bookings, t])
@@ -61,10 +62,10 @@ export default function Guests() {
             </thead>
             <tbody>
               {shown.map((g) => (
-                <tr key={g.email}>
+                <tr key={g.key}>
                   <td data-label="Guest">
-                    <Person name={g.name || g.email}>
-                      <small><Mail size={12} /> <a href={`mailto:${g.email}`}>{g.email}</a></small>
+                    <Person name={g.name || g.email || g.phone}>
+                      {g.email && <small><Mail size={12} /> <a href={`mailto:${g.email}`}>{g.email}</a></small>}
                       {g.phone && <small><Phone size={12} /> <a href={`tel:${g.phone.replace(/[^\d+]/g, '')}`}>{g.phone}</a></small>}
                     </Person>
                   </td>

@@ -20,6 +20,8 @@ import RoomsAdmin from './pages/admin/RoomsAdmin'
 import RoomEditor from './pages/admin/RoomEditor'
 import BookingDetails from './pages/admin/BookingDetails'
 import Calendar from './pages/admin/Calendar'
+import NewBooking from './pages/admin/NewBooking'
+import Blocks from './pages/admin/Blocks'
 import RequireAuth from './components/RequireAuth'
 
 function ScrollToTop() {
@@ -53,7 +55,9 @@ export default function App() {
           <Route path="/admin" element={<RequireAuth admin><AdminLayout /></RequireAuth>}>
             <Route index element={<Overview />} />
             <Route path="bookings" element={<AdminBookings />} />
+            <Route path="bookings/new" element={<NewBooking />} />
             <Route path="bookings/:ref" element={<BookingDetails />} />
+            <Route path="blocks" element={<Blocks />} />
             <Route path="calendar" element={<Calendar />} />
             <Route path="guests" element={<Guests />} />
             <Route path="rooms" element={<RoomsAdmin />} />

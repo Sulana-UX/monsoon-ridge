@@ -4,7 +4,8 @@ import cors from 'cors'
 import rateLimit from 'express-rate-limit'
 import { auth } from './firebase.js'
 import { ApiError } from './errors.js'
-import { createBooking, cancelBooking, syncAdminClaim } from './bookings.js'
+import { createBooking, createStaffBooking, cancelBooking, syncAdminClaim } from './bookings.js'
+import { createBlock, deleteBlock } from './blocks.js'
 import { createRoom, updateRoom, deleteRoom } from './rooms.js'
 import { signRoomUpload } from './uploads.js'
 import { getAvailability } from './availability.js'
@@ -74,7 +75,10 @@ app.post('/api/me/sync-admin', requireUser, handle((req) => syncAdminClaim(req.u
 app.post('/api/admin/rooms', writeLimit, requireUser, requireAdmin, handle((req) => createRoom(db, req.body)))
 app.put('/api/admin/rooms/:id', writeLimit, requireUser, requireAdmin, handle((req) => updateRoom(db, req.params.id, req.body)))
 app.delete('/api/admin/rooms/:id', writeLimit, requireUser, requireAdmin, handle((req) => deleteRoom(db, req.params.id)))
-// Front desk (staff): check-in / check-out / no-show, and internal notes
+// Front desk (staff): walk-in / phone bookings, room blocks, check-in / check-out / no-show, notes
+app.post('/api/admin/bookings', writeLimit, requireUser, requireAdmin, handle((req) => createStaffBooking(req.user, req.body)))
+app.post('/api/admin/blocks', writeLimit, requireUser, requireAdmin, handle((req) => createBlock(req.user, req.body)))
+app.delete('/api/admin/blocks/:id', writeLimit, requireUser, requireAdmin, handle((req) => deleteBlock(req.params.id)))
 app.post('/api/admin/bookings/:ref/status', writeLimit, requireUser, requireAdmin, handle((req) => changeBookingStatus(req.user, req.params.ref, req.body?.action)))
 app.post('/api/admin/bookings/:ref/notes', writeLimit, requireUser, requireAdmin, handle((req) => addNote(req.user, req.params.ref, req.body)))
 app.delete('/api/admin/bookings/:ref/notes/:id', writeLimit, requireUser, requireAdmin, handle((req) => deleteNote(req.params.ref, req.params.id)))

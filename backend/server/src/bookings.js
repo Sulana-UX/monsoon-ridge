@@ -36,6 +36,29 @@ export async function createBooking(user, body) {
     throw new ApiError('resource-exhausted', 'You have reached the limit of upcoming bookings. Please contact the hotel.')
   }
 
+  return reserve(req, { uid: user.uid, accountEmail: user.email ?? null, source: 'online' })
+}
+
+/**
+ * Staff booking for a walk-in or phone guest (no guest account needed).
+ * Same pricing + inventory transaction as online bookings; no per-account limits.
+ * A walk-in arriving today can be checked in straight away.
+ */
+export async function createStaffBooking(staff, body) {
+  const req = parseBookingRequest(body, { staff: true })
+  const source = body?.source === 'phone' ? 'phone' : 'walk-in'
+  const checkInNow = body?.checkInNow === true
+  if (checkInNow && req.checkIn !== hotelToday()) {
+    throw new ApiError('invalid-argument', 'Only a stay starting today can be checked in straight away.')
+  }
+  return reserve(req, {
+    uid: null, accountEmail: null, source, createdBy: staff.email ?? 'staff',
+    ...(checkInNow && { status: 'CheckedIn', checkedInAt: FieldValue.serverTimestamp(), statusBy: staff.email ?? 'staff', statusAt: FieldValue.serverTimestamp() }),
+  })
+}
+
+/** Shared core: price from Firestore, take one room on every night, create the booking. */
+async function reserve(req, extra) {
   const nights = nightsOf(req.checkIn, req.nights)
 
   return db.runTransaction(async (tx) => {
@@ -63,8 +86,6 @@ export async function createBooking(user, body) {
     })
     tx.create(db.collection('bookings').doc(ref), {
       ref,
-      uid: user.uid,
-      accountEmail: user.email ?? null,
       roomId: req.roomId,
       roomName: room.name,
       image: room.image,
@@ -78,6 +99,7 @@ export async function createBooking(user, body) {
       guest: req.guest,
       status: 'Confirmed',
       createdAt: FieldValue.serverTimestamp(),
+      ...extra,
     })
     return { ref }
   })

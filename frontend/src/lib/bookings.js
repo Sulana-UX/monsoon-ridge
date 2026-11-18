@@ -61,3 +61,14 @@ export function useBookingNotes(ref) {
   }, [ref])
   return state
 }
+
+/** Live room blocks (maintenance / private events). Staff only. */
+export function useBlocks() {
+  const [state, setState] = useState({ blocks: [], loading: true, error: null })
+  useEffect(() => onSnapshot(
+    collection(db, 'blocks'),
+    (snap) => setState({ blocks: snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((x, y) => x.from.localeCompare(y.from)), loading: false, error: null }),
+    (error) => setState({ blocks: [], loading: false, error }),
+  ), [])
+  return state
+}

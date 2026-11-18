@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useOutletContext } from 'react-router-dom'
-import { Search, Users, Phone, Mail, XCircle, Download } from 'lucide-react'
+import { Search, Users, Phone, Mail, XCircle, Download, Plus } from 'lucide-react'
 import { api, friendlyError } from '../../lib/firebase'
 import { formatLKR, prettyDate, today } from '../../utils'
 import { Person } from './Avatar'
@@ -24,9 +24,9 @@ const csvCell = (v) => {
 }
 
 function downloadCSV(rows, name) {
-  const head = ['Ref', 'Status', 'Booked on', 'First name', 'Last name', 'Email', 'Phone', 'Country', 'Room', 'Check-in', 'Check-out', 'Nights', 'Guests', 'Arrival', 'Payment', 'Total (LKR)', 'Requests']
+  const head = ['Ref', 'Source', 'Status', 'Booked on', 'First name', 'Last name', 'Email', 'Phone', 'Country', 'Room', 'Check-in', 'Check-out', 'Nights', 'Guests', 'Arrival', 'Payment', 'Total (LKR)', 'Requests']
   const body = rows.map((b) => [
-    b.ref, b.status, b.createdAt ? b.createdAt.toISOString().slice(0, 10) : '', b.guest?.firstName, b.guest?.lastName,
+    b.ref, b.source === 'phone' ? 'Phone' : b.source === 'walk-in' ? 'Walk-in' : 'Online', b.status, b.createdAt ? b.createdAt.toISOString().slice(0, 10) : '', b.guest?.firstName, b.guest?.lastName,
     b.guest?.email, b.guest?.phone, b.guest?.country, b.roomName, b.checkIn, b.checkOut, b.nights, b.guests,
     b.guest?.arrival, b.payment === 'card' ? 'Card' : 'Pay at hotel', b.total, b.guest?.requests,
   ])
@@ -86,9 +86,12 @@ export default function Bookings() {
           <h1>Bookings</h1>
           <p className="muted">{shown.length} shown · {bookings.length} total</p>
         </div>
-        <button className="btn btn-outline btn-sm" onClick={() => downloadCSV(shown, `bookings-${filter}-${t}.csv`)} disabled={!shown.length}>
-          <Download size={16} /> Export CSV
-        </button>
+        <div className="head-actions">
+          <button className="btn btn-outline btn-sm" onClick={() => downloadCSV(shown, `bookings-${filter}-${t}.csv`)} disabled={!shown.length}>
+            <Download size={16} /> Export CSV
+          </button>
+          <Link to="/admin/bookings/new" className="btn btn-gold btn-sm"><Plus size={16} /> New booking</Link>
+        </div>
       </div>
 
       <div className="admin-tools">
@@ -123,7 +126,8 @@ export default function Bookings() {
                 <tr key={b.ref} className={`is-clickable ${isLive(b) ? '' : 'is-cancelled'}`}
                   onClick={(e) => { if (!e.target.closest('button, a')) navigate(`/admin/bookings/${b.ref}`) }}>
                   <td data-label="Ref"><Link to={`/admin/bookings/${b.ref}`} className="mono ref-link">{b.ref}</Link>
-                    <small className="muted">{b.createdAt ? b.createdAt.toLocaleDateString('en-GB') : ''}</small></td>
+                    <small className="muted">{b.createdAt ? b.createdAt.toLocaleDateString('en-GB') : ''}</small>
+                    {b.source && b.source !== 'online' && <span className="source-tag">{b.source === 'phone' ? 'Phone' : 'Walk-in'}</span>}</td>
                   <td data-label="Guest">
                     <Person name={`${b.guest?.firstName ?? ''} ${b.guest?.lastName ?? ''}`.trim() || 'Guest'}>
                       <small><Mail size={12} /> {b.guest?.email}</small>
