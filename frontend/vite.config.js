@@ -7,7 +7,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: { firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/functions', 'firebase/app-check'] },
+        manualChunks: { firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'] },
       },
     },
     chunkSizeWarningLimit: 700,

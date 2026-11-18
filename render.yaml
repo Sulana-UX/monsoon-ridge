@@ -1,0 +1,22 @@
+# Render Blueprint: deploys backend/server as a free web service.
+# Render dashboard → New → Blueprint → pick this GitHub repo.
+services:
+  - type: web
+    name: monsoon-ridge-api
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: backend/server
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: ADMIN_EMAILS
+        sync: false # entered in the dashboard
+      - key: ALLOWED_ORIGINS
+        value: https://monsoon-ridge.web.app,https://monsoon-ridge.firebaseapp.com
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false # secret: paste the service-account JSON in the dashboard

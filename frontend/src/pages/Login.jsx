@@ -24,7 +24,7 @@ const GoogleIcon = () => (
 )
 
 export default function Login({ mode: initialMode = 'login' }) {
-  const { user, loading, signIn, signUp, signInWithGoogle, resetPassword } = useAuth()
+  const { user, isAdmin, loading, signIn, signUp, signInWithGoogle, resetPassword } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const from = safePath(location.state?.from)
@@ -44,8 +44,9 @@ export default function Login({ mode: initialMode = 'login' }) {
 
   // Already signed in (or just signed in): go back to where they came from
   useEffect(() => {
-    if (!loading && user) navigate(from, { replace: true })
-  }, [user, loading]) // eslint-disable-line react-hooks/exhaustive-deps
+    // Staff go straight to the dashboard; guests go back to where they were
+    if (!loading && user) navigate(isAdmin ? '/admin' : from, { replace: true })
+  }, [user, isAdmin, loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 

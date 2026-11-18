@@ -14,3 +14,7 @@ ui-debug.log*
 
 # build caches
 .vite/
+
+# Firebase Admin private keys: NEVER commit
+service-account*.json
+*-firebase-adminsdk-*.json

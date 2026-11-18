@@ -1,4 +1,4 @@
-import { HttpsError } from 'firebase-functions/v2/https'
+import { ApiError } from './errors.js'
 
 const HOTEL_TZ = 'Asia/Colombo'
 const DAY = 86400000
@@ -8,7 +8,7 @@ export const COUNTRIES = ['Sri Lanka', 'India', 'United Kingdom', 'United States
 export const PAYMENTS = ['hotel', 'card']
 
 const bad = (msg) => {
-  throw new HttpsError('invalid-argument', msg)
+  throw new ApiError('invalid-argument', msg)
 }
 
 /** Today's date (YYYY-MM-DD) at the hotel, not on the server's clock. */

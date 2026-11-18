@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   User, Mail, Phone, Globe, Clock, MessageSquare, CreditCard, Building, Lock,
@@ -28,6 +28,9 @@ export default function Booking() {
     firstName: first, lastName: rest.join(' '), email: user?.email || '', phone: '', country: 'Sri Lanka',
     arrival: '14:00', requests: '', agree: false,
   })
+
+  // The free API server sleeps when idle: wake it while the guest fills in the form
+  useEffect(() => { api.wake() }, [])
 
   if (!room) return <NotFound />
 

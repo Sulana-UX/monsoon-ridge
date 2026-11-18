@@ -8,6 +8,7 @@ export const rooms = [
     price: 18500,
     size: 32,
     guests: 2,
+    units: 6, // rooms of this type (keep in sync with backend/functions/src/rooms.js)
     beds: '1 King Bed',
     view: 'Garden View',
     rating: 4.7,
@@ -32,6 +33,7 @@ export const rooms = [
     price: 32000,
     size: 54,
     guests: 3,
+    units: 4, // rooms of this type (keep in sync with backend/functions/src/rooms.js)
     beds: '1 King + 1 Sofa Bed',
     view: 'River View',
     rating: 4.9,
@@ -56,6 +58,7 @@ export const rooms = [
     price: 54000,
     size: 110,
     guests: 5,
+    units: 2, // rooms of this type (keep in sync with backend/functions/src/rooms.js)
     beds: '2 King Beds + 1 Single',
     view: 'Private Pool',
     rating: 4.8,
@@ -80,6 +83,7 @@ export const rooms = [
     price: 14500,
     size: 28,
     guests: 2,
+    units: 6, // rooms of this type (keep in sync with backend/functions/src/rooms.js)
     beds: '2 Single Beds',
     view: 'Courtyard View',
     rating: 4.5,
@@ -103,6 +107,7 @@ export const rooms = [
     price: 38500,
     size: 60,
     guests: 2,
+    units: 2, // rooms of this type (keep in sync with backend/functions/src/rooms.js)
     beds: '1 Canopy King Bed',
     view: 'River & Sunset',
     rating: 5.0,
@@ -126,6 +131,7 @@ export const rooms = [
     price: 12000,
     size: 24,
     guests: 2,
+    units: 8, // rooms of this type (keep in sync with backend/functions/src/rooms.js)
     beds: '1 Queen Bed',
     view: 'Garden View',
     rating: 4.4,

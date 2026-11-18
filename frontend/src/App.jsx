@@ -1,4 +1,5 @@
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useAuth } from './context/AuthContext'
 import { useEffect } from 'react'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
@@ -11,7 +12,10 @@ import MyBookings from './pages/MyBookings'
 import Contact from './pages/Contact'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
-import Admin from './pages/Admin'
+import AdminLayout from './pages/admin/AdminLayout'
+import Overview from './pages/admin/Overview'
+import AdminBookings from './pages/admin/Bookings'
+import Guests from './pages/admin/Guests'
 import RequireAuth from './components/RequireAuth'
 
 function ScrollToTop() {
@@ -23,10 +27,17 @@ function ScrollToTop() {
 }
 
 export default function App() {
+  const { pathname } = useLocation()
+  const { isAdmin: adminUser, loading } = useAuth()
+  const isAdmin = pathname.startsWith('/admin')
+
+  // Staff accounts only use the dashboard: any website page sends them back to it
+  if (!loading && adminUser && !isAdmin) return <Navigate to="/admin" replace />
+
   return (
     <>
       <ScrollToTop />
-      <Navbar />
+      {!isAdmin && <Navbar />}
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -35,14 +46,18 @@ export default function App() {
           <Route path="/booking/:id" element={<RequireAuth><Booking /></RequireAuth>} />
           <Route path="/confirmation/:ref" element={<RequireAuth><Confirmation /></RequireAuth>} />
           <Route path="/my-bookings" element={<RequireAuth verified={false}><MyBookings /></RequireAuth>} />
-          <Route path="/admin" element={<RequireAuth admin><Admin /></RequireAuth>} />
+          <Route path="/admin" element={<RequireAuth admin><AdminLayout /></RequireAuth>}>
+            <Route index element={<Overview />} />
+            <Route path="bookings" element={<AdminBookings />} />
+            <Route path="guests" element={<Guests />} />
+          </Route>
           <Route path="/login" element={<Login mode="login" />} />
           <Route path="/register" element={<Login mode="register" />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      <Footer />
+      {!isAdmin && <Footer />}
     </>
   )
 }

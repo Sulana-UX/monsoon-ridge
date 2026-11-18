@@ -1,8 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, connectAuthEmulator } from 'firebase/auth'
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
-import { getFunctions, connectFunctionsEmulator, httpsCallable } from 'firebase/functions'
-import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check'
 
 const env = import.meta.env
 
@@ -15,31 +13,57 @@ const app = initializeApp({
   appId: env.VITE_FIREBASE_APP_ID,
 })
 
-// App Check proves requests come from this site, not a script (optional until a key is set)
-if (env.VITE_RECAPTCHA_SITE_KEY) {
-  initializeAppCheck(app, {
-    provider: new ReCaptchaEnterpriseProvider(env.VITE_RECAPTCHA_SITE_KEY),
-    isTokenAutoRefreshEnabled: true,
-  })
-}
-
 export const auth = getAuth(app)
 export const db = getFirestore(app)
-export const functions = getFunctions(app, 'asia-south1')
 
 if (env.DEV && env.VITE_USE_EMULATORS === 'true') {
   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
   connectFirestoreEmulator(db, '127.0.0.1', 8080)
-  connectFunctionsEmulator(functions, '127.0.0.1', 5001)
+}
+
+/* ---------- Backend API (backend/server) ---------- */
+
+const API_URL = (env.VITE_API_URL || 'http://localhost:8787').replace(/\/$/, '')
+
+class ApiError extends Error {
+  constructor(code, message) {
+    super(message)
+    this.code = code
+  }
+}
+
+/** POST to our Express API with the signed-in user's Firebase ID token. */
+async function call(path, body) {
+  const user = auth.currentUser
+  if (!user) throw new ApiError('api/unauthenticated', 'Please sign in first.')
+  const token = await user.getIdToken()
+
+  let res
+  try {
+    res = await fetch(API_URL + path, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body ?? {}),
+    })
+  } catch {
+    throw new ApiError('api/unavailable', 'Could not reach the booking server. Please try again in a moment.')
+  }
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new ApiError(`api/${data.error?.code || 'internal'}`, data.error?.message || 'Something went wrong. Please try again.')
+  }
+  return { data }
 }
 
 export const api = {
-  createBooking: httpsCallable(functions, 'createBooking'),
-  cancelBooking: httpsCallable(functions, 'cancelBooking'),
-  syncAdminClaim: httpsCallable(functions, 'syncAdminClaim'),
+  createBooking: (booking) => call('/api/bookings', booking),
+  cancelBooking: ({ ref }) => call(`/api/bookings/${encodeURIComponent(ref)}/cancel`),
+  syncAdminClaim: () => call('/api/me/sync-admin'),
+  // The free server sleeps when idle; ping it early so it's awake by the time a guest books
+  wake: () => fetch(API_URL + '/health').catch(() => {}),
 }
 
-/** Turns Firebase error codes into messages a guest can act on. */
+/** Turns error codes into messages a guest can act on. */
 export function friendlyError(err) {
   const code = err?.code || ''
   const map = {
@@ -53,11 +77,9 @@ export function friendlyError(err) {
     'auth/network-request-failed': 'Network problem. Check your connection and try again.',
     'auth/popup-blocked': 'The sign-in popup was blocked. Please allow popups for this site.',
     'auth/account-exists-with-different-credential': 'This email is already registered with a password. Sign in with email instead.',
-    'functions/unavailable': 'The booking service is unavailable right now. Please try again.',
-    'functions/internal': 'Something went wrong. Please try again.',
   }
   if (map[code]) return map[code]
-  // Messages from our own functions are written for guests already
-  if (code.startsWith('functions/') && err.message) return err.message
+  // Messages from our own API are written for guests already
+  if (code.startsWith('api/') && err.message) return err.message
   return 'Something went wrong. Please try again.'
 }

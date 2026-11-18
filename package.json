@@ -2,13 +2,14 @@
   "name": "monsoon-ridge",
   "private": true,
   "scripts": {
-    "install:all": "npm --prefix frontend install && npm --prefix backend/functions install",
+    "start": "node scripts/dev.mjs",
+    "install:all": "npm --prefix frontend install && npm --prefix backend/server install",
     "dev": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build",
-    "test": "npm --prefix backend/functions test",
-    "emulators": "firebase emulators:start --only auth,firestore,functions",
+    "test": "npm --prefix backend/server test",
+    "api": "npm --prefix backend/server run dev",
+    "emulators": "firebase emulators:start --only auth,firestore",
     "deploy:rules": "firebase deploy --only firestore",
-    "deploy:functions": "firebase deploy --only functions",
-    "deploy": "npm run build && firebase deploy"
+    "deploy": "npm run build && firebase deploy --only hosting,firestore"
   }
 }
