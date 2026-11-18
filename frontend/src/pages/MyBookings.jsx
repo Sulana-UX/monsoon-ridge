@@ -7,6 +7,7 @@ import { useBookings } from '../lib/bookings'
 import { api, friendlyError } from '../lib/firebase'
 import { images } from '../data/rooms'
 import { formatLKR, prettyDate, today } from '../utils'
+import { isLive, statusClass, statusLabel } from '../lib/status'
 
 export default function MyBookings() {
   const { user } = useAuth()
@@ -49,12 +50,12 @@ export default function MyBookings() {
           ) : (
             <div className="booking-list">
               {bookings.map((b) => (
-                <article key={b.ref} className={`booking-item ${b.status === 'Cancelled' ? 'is-cancelled' : ''}`}>
+                <article key={b.ref} className={`booking-item ${isLive(b) ? '' : 'is-cancelled'}`}>
                   <img src={b.image} alt="" />
                   <div className="bi-body">
                     <div className="bi-top">
                       <h3>{b.roomName}</h3>
-                      <span className={`status ${b.status === 'Confirmed' ? 'status--ok' : 'status--bad'}`}>{b.status}</span>
+                      <span className={statusClass(b.status)}>{statusLabel(b.status)}</span>
                     </div>
                     <p className="muted small">Ref: <strong>{b.ref}</strong></p>
                     <div className="bi-meta">

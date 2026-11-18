@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { collection, doc, onSnapshot, orderBy, query, where, limit } from 'firebase/firestore'
 import { db } from './firebase'
 
+// Firestore Timestamps (createdAt, checkedInAt, …) become JS Dates
 const fromSnap = (d) => {
   const b = d.data()
-  return { ...b, createdAt: b.createdAt?.toDate?.() ?? null }
+  for (const k of Object.keys(b)) if (typeof b[k]?.toDate === 'function') b[k] = b[k].toDate()
+  return { ...b, createdAt: b.createdAt ?? null }
 }
 
 /** Live list of bookings. uid = one guest's bookings; uid = null with all = every booking (admin). */
@@ -43,5 +45,19 @@ export function useBookingByRef(ref) {
     )
   }, [ref])
 
+  return state
+}
+
+/** Live staff-only notes for a booking (rules allow admins only). */
+export function useBookingNotes(ref) {
+  const [state, setState] = useState({ notes: [], loading: true, error: null })
+  useEffect(() => {
+    if (!ref) return
+    return onSnapshot(
+      query(collection(db, 'bookings', ref, 'notes'), orderBy('at', 'desc')),
+      (snap) => setState({ notes: snap.docs.map((d) => ({ id: d.id, ...d.data(), at: d.data().at?.toDate?.() ?? null })), loading: false, error: null }),
+      (error) => setState({ notes: [], loading: false, error }),
+    )
+  }, [ref])
   return state
 }

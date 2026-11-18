@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import { Search, Users, Phone, Mail, XCircle, Download } from 'lucide-react'
 import { api, friendlyError } from '../../lib/firebase'
 import { formatLKR, prettyDate, today } from '../../utils'
+import { Person } from './Avatar'
+import { isLive, statusClass, statusLabel } from '../../lib/status'
 
 const FILTERS = [
   { key: 'upcoming', label: 'Upcoming' },
+  { key: 'inhouse', label: 'In house' },
   { key: 'today', label: 'Arriving today' },
   { key: 'past', label: 'Past' },
   { key: 'cancelled', label: 'Cancelled' },
@@ -42,21 +45,23 @@ export default function Bookings() {
   const [busyRef, setBusyRef] = useState(null)
   const [msg, setMsg] = useState('')
   const t = today()
+  const navigate = useNavigate()
 
   const shown = useMemo(() => {
     const term = q.trim().toLowerCase()
     return bookings
       .filter((b) => {
-        const live = b.status === 'Confirmed'
-        if (filter === 'upcoming') return live && b.checkOut > t
-        if (filter === 'today') return live && b.checkIn === t
-        if (filter === 'past') return live && b.checkOut <= t
-        if (filter === 'cancelled') return !live
+        const s = b.status
+        if (filter === 'upcoming') return s === 'Confirmed' && b.checkOut > t
+        if (filter === 'inhouse') return s === 'CheckedIn'
+        if (filter === 'today') return (s === 'Confirmed' || s === 'CheckedIn') && b.checkIn === t
+        if (filter === 'past') return s === 'CheckedOut' || (s === 'Confirmed' && b.checkOut <= t)
+        if (filter === 'cancelled') return !isLive(b)
         return true
       })
       .filter((b) => !term || [b.ref, b.roomName, b.guest?.firstName, b.guest?.lastName, b.guest?.email, b.guest?.phone]
         .some((v) => (v || '').toLowerCase().includes(term)))
-      .sort((a, b) => (filter === 'upcoming' || filter === 'today' ? a.checkIn.localeCompare(b.checkIn) : 0))
+      .sort((a, b) => (['upcoming', 'today', 'inhouse'].includes(filter) ? a.checkIn.localeCompare(b.checkIn) : 0))
   }, [bookings, filter, q, t])
 
   const cancel = async (b) => {
@@ -77,6 +82,7 @@ export default function Bookings() {
     <>
       <div className="admin-head">
         <div>
+          <span className="eyebrow">Reservations</span>
           <h1>Bookings</h1>
           <p className="muted">{shown.length} shown · {bookings.length} total</p>
         </div>
@@ -114,21 +120,23 @@ export default function Bookings() {
             </thead>
             <tbody>
               {shown.map((b) => (
-                <tr key={b.ref} className={b.status !== 'Confirmed' ? 'is-cancelled' : ''}>
-                  <td data-label="Ref"><strong className="mono">{b.ref}</strong>
+                <tr key={b.ref} className={`is-clickable ${isLive(b) ? '' : 'is-cancelled'}`}
+                  onClick={(e) => { if (!e.target.closest('button, a')) navigate(`/admin/bookings/${b.ref}`) }}>
+                  <td data-label="Ref"><Link to={`/admin/bookings/${b.ref}`} className="mono ref-link">{b.ref}</Link>
                     <small className="muted">{b.createdAt ? b.createdAt.toLocaleDateString('en-GB') : ''}</small></td>
                   <td data-label="Guest">
-                    <strong>{b.guest?.firstName} {b.guest?.lastName}</strong>
-                    <small><Mail size={12} /> {b.guest?.email}</small>
-                    <small><Phone size={12} /> {b.guest?.phone}</small>
-                    {b.guest?.requests && <small className="admin-req">"{b.guest.requests}"</small>}
+                    <Person name={`${b.guest?.firstName ?? ''} ${b.guest?.lastName ?? ''}`.trim() || 'Guest'}>
+                      <small><Mail size={12} /> {b.guest?.email}</small>
+                      <small><Phone size={12} /> {b.guest?.phone}</small>
+                      {b.guest?.requests && <small className="admin-req">"{b.guest.requests}"</small>}
+                    </Person>
                   </td>
                   <td data-label="Room">{b.roomName}<small className="muted"><Users size={12} /> {b.guests} guest{b.guests > 1 ? 's' : ''}</small></td>
                   <td data-label="Stay">{prettyDate(b.checkIn)}<small className="muted">→ {prettyDate(b.checkOut)} · {b.nights}n</small>
                     {b.guest?.arrival && <small className="muted">ETA {b.guest.arrival}</small>}</td>
                   <td data-label="Total"><strong>{formatLKR(b.total)}</strong><small className="muted">{b.payment === 'card' ? 'Card' : 'Pay at hotel'}</small></td>
                   <td data-label="Status">
-                    <span className={`status ${b.status === 'Confirmed' ? 'status--ok' : 'status--bad'}`}>{b.status}</span>
+                    <span className={statusClass(b.status)}>{statusLabel(b.status)}</span>
                     {b.cancelledBy && <small className="muted">by {b.cancelledBy}</small>}
                   </td>
                   <td>

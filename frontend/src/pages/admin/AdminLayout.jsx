@@ -1,25 +1,36 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, CalendarDays, Users, LogOut, BedDouble } from 'lucide-react'
-import { useAllRooms } from '../../context/RoomsContext'
-import Logo from '../../components/Logo'
+import { useEffect, useMemo, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { LayoutDashboard, CalendarDays, CalendarRange, Users, LogOut, BedDouble, Menu, ChevronRight } from 'lucide-react'
 import { useBookings } from '../../lib/bookings'
 import { useAuth } from '../../context/AuthContext'
+import { useAllRooms } from '../../context/RoomsContext'
+import { prettyDate, today } from '../../utils'
+import Avatar from './Avatar'
+import './admin.css'
+import './frontdesk.css'
 
 const NAV = [
   { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: '/admin/bookings', label: 'Bookings', icon: CalendarDays },
+  { to: '/admin/bookings', label: 'Bookings', icon: CalendarDays, count: 'upcoming' },
+  { to: '/admin/calendar', label: 'Calendar', icon: CalendarRange },
   { to: '/admin/rooms', label: 'Rooms', icon: BedDouble },
   { to: '/admin/guests', label: 'Guests', icon: Users },
 ]
 
+const MountainMark = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2 19 9 8l4 6 3-4 6 9" />
+    <path d="M9 4v2M5.5 5.5l1 1M12.5 5.5l-1 1" />
+  </svg>
+)
+
 export default function AdminLayout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
-  const signOut = async () => {
-    await logout()
-    navigate('/', { replace: true })
-  }
-  // One live subscription shared by every tab
+  const { pathname } = useLocation()
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  // One live subscription each, shared by every tab
   const bookingsState = useBookings({ all: true, max: 1000 })
   const roomsState = useAllRooms()
   const data = {
@@ -29,43 +40,82 @@ export default function AdminLayout() {
     error: bookingsState.error || roomsState.error,
   }
 
+  const t = today()
+  const counts = useMemo(() => ({
+    upcoming: bookingsState.bookings.filter((b) => b.status === 'Confirmed' && b.checkOut > t).length,
+  }), [bookingsState.bookings, t])
+
+  useEffect(() => setMenuOpen(false), [pathname])
+
+  const section = NAV.find((n) => (n.end ? pathname === n.to : pathname.startsWith(n.to)))?.label ?? 'Overview'
+  const name = user.displayName || user.email.split('@')[0]
+
+  const signOut = async () => {
+    await logout()
+    navigate('/', { replace: true })
+  }
+
   return (
-    <section className="admin-page">
-      <div className="admin-shell">
-        <aside className="admin-side">
-          <div className="admin-logo"><Logo light /></div>
-          <div className="admin-side-head">
-            <span className="eyebrow">Staff</span>
-            <strong>Dashboard</strong>
+    <div className={`admin-page ${menuOpen ? 'menu-open' : ''}`}>
+      <aside className="admin-side">
+        <div className="admin-brand">
+          <span className="admin-brand-mark"><MountainMark /></span>
+          <div>
+            <strong>Monsoon Ridge</strong>
+            <small>Staff dashboard</small>
+          </div>
+        </div>
+
+        <div className="admin-nav-label">Manage</div>
+        <nav>
+          {NAV.map(({ to, label, icon: Icon, end, count }) => (
+            <NavLink key={to} to={to} end={end} className="admin-nav">
+              <Icon size={18} /> {label}
+              {count && counts[count] > 0 && <span className="nav-count">{counts[count]}</span>}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="admin-user">
+          <Avatar name={name} />
+          <div>
+            <strong>{name}</strong>
             <small>{user.email}</small>
           </div>
-          <nav>
-            {NAV.map(({ to, label, icon: Icon, end }) => (
-              <NavLink key={to} to={to} end={end} className="admin-nav">
-                <Icon size={18} /> {label}
-              </NavLink>
-            ))}
-            <button className="admin-nav admin-nav--muted" onClick={signOut}><LogOut size={18} /> Sign out</button>
-          </nav>
-        </aside>
-
-        <div className="admin-main">
-          {data.loading ? (
-            <div className="page-loading"><span className="spinner" /></div>
-          ) : data.error ? (
-            <div className="empty">
-              <h3>Couldn't load bookings</h3>
-              <p className="muted">
-                {data.error.code === 'permission-denied'
-                  ? 'This account does not have staff access. Sign out and in again after being added as admin.'
-                  : 'Please check your connection and refresh the page.'}
-              </p>
-            </div>
-          ) : (
-            <Outlet context={data} />
-          )}
+          <button className="admin-signout" onClick={signOut} title="Sign out" aria-label="Sign out">
+            <LogOut size={16} />
+          </button>
         </div>
-      </div>
-    </section>
+      </aside>
+      {menuOpen && <div className="admin-scrim" onClick={() => setMenuOpen(false)} />}
+
+      <main className="admin-main">
+        <header className="admin-topbar">
+          <div className="admin-crumbs">
+            <button className="admin-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open menu"><Menu size={18} /></button>
+            <span>Dashboard</span> <ChevronRight size={14} /> <strong>{section}</strong>
+          </div>
+          <div className="admin-topbar-right">
+            <span className="admin-topbar-date">{prettyDate(t)}</span>
+            <span className="live-dot" title="Updates automatically">Live</span>
+          </div>
+        </header>
+
+        {data.loading ? (
+          <div className="page-loading"><span className="spinner" /></div>
+        ) : data.error ? (
+          <div className="empty">
+            <h3>Couldn't load the dashboard</h3>
+            <p className="muted">
+              {data.error.code === 'permission-denied'
+                ? 'This account does not have staff access. Sign out and in again after being added as admin.'
+                : 'Please check your connection and refresh the page.'}
+            </p>
+          </div>
+        ) : (
+          <Outlet context={data} />
+        )}
+      </main>
+    </div>
   )
 }

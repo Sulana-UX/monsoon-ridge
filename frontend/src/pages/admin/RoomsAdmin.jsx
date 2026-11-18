@@ -13,7 +13,7 @@ export default function RoomsAdmin() {
   const upcoming = useMemo(() => {
     const t = new Date().toISOString().slice(0, 10)
     const m = {}
-    for (const b of bookings) if (b.status === 'Confirmed' && b.checkOut > t) m[b.roomId] = (m[b.roomId] || 0) + 1
+    for (const b of bookings) if ((b.status === 'Confirmed' || b.status === 'CheckedIn') && b.checkOut > t) m[b.roomId] = (m[b.roomId] || 0) + 1
     return m
   }, [bookings])
 
@@ -24,6 +24,7 @@ export default function RoomsAdmin() {
     <>
       <div className="admin-head">
         <div>
+          <span className="eyebrow">Inventory</span>
           <h1>Rooms</h1>
           <p className="muted">{rooms.length} room type{rooms.length === 1 ? '' : 's'} · {rooms.reduce((s, r) => s + (r.units || 0), 0)} rooms in total</p>
         </div>

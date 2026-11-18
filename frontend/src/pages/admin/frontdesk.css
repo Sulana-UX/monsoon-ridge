@@ -1,0 +1,119 @@
+/* ================= FRONT DESK / BOOKING DETAILS / CALENDAR ================= */
+.status--in { background: #e3eeee; color: #1f4a50; }
+.status--out { background: #eeece7; color: #6d6a62; }
+
+/* front-desk buttons */
+.fd-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.fd-btn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; border-radius: 10px; font: inherit; font-weight: 600; font-size: .88rem; cursor: pointer; border: 1px solid transparent; transition: all .15s; }
+.fd-btn:disabled { opacity: .6; cursor: progress; }
+.fd-btn--primary { background: #10292d; color: #fff; }
+.fd-btn--primary:hover { background: #1c4448; }
+.fd-btn--danger { background: #fff; color: #a33a3a; border-color: #f0caca; }
+.fd-btn--danger:hover { background: #fbeaea; }
+.fd-btn--ghost { background: #fff; color: #10292d; border-color: #ece6da; }
+.fd-btn--ghost:hover { border-color: #10292d; }
+.fd-actions--compact .fd-btn { padding: 6px 11px; font-size: .78rem; border-radius: 8px; }
+.fd-err { flex-basis: 100%; margin: 4px 0 0; font-size: .8rem; color: #a33a3a; }
+.today-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.today-item > a { min-width: 0; color: inherit; }
+.today-done { font-size: .78rem; font-weight: 700; color: #17694a; background: #e6f4ee; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.recent-person { color: inherit; min-width: 0; }
+.recent-person:hover strong { color: #8f6820; }
+
+/* clickable booking rows */
+.admin-table tr.is-clickable { cursor: pointer; }
+.ref-link { font-weight: 700; color: #10292d; }
+.ref-link:hover { color: #8f6820; text-decoration: underline; }
+
+/* booking details */
+.booking-details .back-link { margin-bottom: 10px; }
+.mono-title { font-family: ui-monospace, Consolas, monospace !important; letter-spacing: .04em; }
+.bd-head-actions { display: flex; align-items: center; gap: 12px; }
+.bd-head-actions .status { font-size: .78rem; padding: 6px 14px; }
+.bd-actionbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin: -6px 0 20px; }
+.bd-actionbar:empty { display: none; }
+.bd-cancel { color: #a33a3a; }
+.bd-title { font-size: 1.05rem; margin: 0 0 16px; color: #10292d; }
+.bd-list { list-style: none; padding: 0; margin: 16px 0 0; display: flex; flex-direction: column; gap: 10px; font-size: .9rem; }
+.bd-list li { display: flex; align-items: center; gap: 10px; }
+.bd-list svg { color: #b8862f; flex-shrink: 0; }
+.bd-list a { color: inherit; }
+.bd-list a:hover { color: #8f6820; }
+.bd-requests { display: flex; gap: 10px; margin-top: 18px; padding: 14px 16px; border-radius: 12px; background: #f7eedb; color: #5c4314; }
+.bd-requests svg { flex-shrink: 0; margin-top: 2px; }
+.bd-requests p { margin: 4px 0 0; font-style: italic; }
+.bd-room { height: 120px; border-radius: 12px; background: #e3eeee center / cover; position: relative; overflow: hidden; display: flex; align-items: flex-end; }
+.bd-room::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(10, 30, 32, .75)); }
+.bd-room span { position: relative; z-index: 1; color: #fff; font-family: var(--serif); font-size: 1.1rem; padding: 12px 14px; }
+.bd-price { margin-bottom: 10px; }
+.bd-timeline { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 14px; position: relative; }
+.bd-timeline li { display: flex; gap: 12px; align-items: flex-start; position: relative; }
+.bd-timeline li:not(.bd-by):not(:last-of-type)::after { content: ''; position: absolute; left: 13px; top: 30px; bottom: -12px; width: 2px; background: #ece6da; }
+.bd-dot { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #f7eedb; color: #8f6820; flex-shrink: 0; }
+.bd-timeline strong { display: block; font-size: .9rem; }
+.bd-timeline small { color: #6d7a7b; font-size: .78rem; }
+.bd-by { font-size: .78rem; color: #6d7a7b; align-items: center !important; gap: 6px !important; padding-top: 6px; border-top: 1px dashed #ece6da; }
+.bd-notes h3 { display: flex; align-items: center; gap: 8px; }
+.bd-note-form { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 14px; }
+.bd-note-form textarea { flex: 1; font: inherit; padding: 12px 14px; border: 1px solid #ece6da; border-radius: 12px; resize: vertical; outline: none; background: #fcfaf6; }
+.bd-note-form textarea:focus { border-color: #b8862f; background: #fff; }
+.bd-note-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.bd-note-list li { position: relative; padding: 14px 52px 12px 16px; border-radius: 12px; background: #fffbea; border: 1px solid #f3e6b8; }
+.bd-note-list p { margin: 0 0 6px; white-space: pre-wrap; }
+.bd-note-list small { color: #6d7a7b; font-size: .76rem; }
+.bd-note-list .icon-btn { position: absolute; right: 10px; top: 10px; width: 30px; height: 30px; }
+
+/* calendar */
+.cal-nav { display: flex; align-items: center; gap: 10px; }
+.cal-nav strong { min-width: 150px; text-align: center; font-family: var(--serif); font-size: 1.15rem; }
+.cal-card { padding: 0; overflow: hidden; }
+.cal-scroll { overflow-x: auto; }
+.cal { border-collapse: separate; border-spacing: 3px; font-size: .78rem; margin: 10px; }
+.cal thead th { font-weight: 600; color: #6d7a7b; text-align: center; padding: 4px 0 6px; min-width: 32px; }
+.cal thead th span { display: block; font-size: .64rem; letter-spacing: .06em; opacity: .7; }
+.cal thead th.is-weekend { color: #8f6820; }
+.cal thead th.is-today { color: #fff; background: #10292d; border-radius: 8px; }
+.cal .cal-room { position: sticky; left: 0; z-index: 2; background: #fff; text-align: left; padding: 6px 14px 6px 6px; min-width: 170px; box-shadow: 6px 0 8px -6px rgba(16, 41, 45, .12); }
+.cal .cal-room strong { display: block; font-size: .82rem; color: #10292d; white-space: nowrap; }
+.cal .cal-room small { font-size: .7rem; color: #6d7a7b; font-weight: 400; }
+.cal td { padding: 0; }
+.cal td.is-past .cal-cell { opacity: .55; }
+.cal-cell { width: 32px; height: 32px; border-radius: 7px; border: none; font: inherit; font-weight: 700; font-size: .78rem; cursor: pointer; display: grid; place-items: center; transition: transform .1s, box-shadow .1s; font-variant-numeric: tabular-nums; }
+.cal-cell:hover { transform: scale(1.12); box-shadow: 0 4px 12px rgba(16, 41, 45, .2); position: relative; z-index: 1; }
+.cal-cell.is-picked { outline: 3px solid #10292d; outline-offset: 1px; }
+.cal td.is-today .cal-cell { box-shadow: inset 0 0 0 2px #10292d; }
+.cal-total .cal-room { border-top: 1px solid #ece6da; }
+.cal-cell--total { font-size: .7rem; }
+/* sequential gold ramp: light → dark; the two darkest steps use white text */
+.lv0, .lv-na { background: #f4f1ea; color: #b5ad9f; }
+.lv1 { background: #f6e7c4; color: #6b4d12; }
+.lv2 { background: #e8c886; color: #5a3f0c; }
+.lv3 { background: #cf9f45; color: #2e2006; }
+.lv4 { background: #a8781f; color: #fff; }
+.lv5 { background: #6e4c10; color: #fff; box-shadow: inset 0 0 0 2px #3d2a06; }
+.cal-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 18px; border-top: 1px solid #ece6da; background: #fcfaf6; }
+.cal-key { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; color: #10292d; }
+.cal-swatch { width: 16px; height: 16px; border-radius: 4px; display: inline-block; }
+.cal-legend-note { margin-left: auto; }
+.cal-detail { margin-top: 18px; }
+
+@media (max-width: 640px) {
+  .bd-note-form { flex-direction: column; align-items: stretch; }
+  .cal-nav { flex-wrap: wrap; }
+  .cal-nav strong { min-width: 0; }
+  .cal .cal-room { min-width: 120px; }
+  .cal-legend-note { margin-left: 0; }
+}
+
+/* print: just the booking */
+@media print {
+  .admin-side, .admin-topbar, .no-print, .admin-scrim { display: none !important; }
+  .admin-page { display: block; background: #fff; }
+  .admin-main { padding: 0; }
+  .admin-card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+}
+
+/* Today card: arrivals above departures so names + buttons fit */
+.today-cols { grid-template-columns: 1fr !important; gap: 20px; }
+.fd-btn { white-space: nowrap; flex-shrink: 0; }
+.today-item .person small { max-width: 220px; }

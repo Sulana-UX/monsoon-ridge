@@ -64,6 +64,16 @@ export const api = {
   updateRoom: (id, room) => call(`/api/admin/rooms/${encodeURIComponent(id)}`, room, 'PUT'),
   deleteRoom: (id) => call(`/api/admin/rooms/${encodeURIComponent(id)}`, null, 'DELETE'),
   signUpload: () => call('/api/admin/uploads/sign'),
+  // front desk (staff)
+  setBookingStatus: (ref, action) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/status`, { action }),
+  addNote: (ref, text) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/notes`, { text }),
+  deleteNote: (ref, id) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/notes/${encodeURIComponent(id)}`, null, 'DELETE'),
+  // Public: rooms free for the whole stay, per room id
+  availability: async (checkIn, checkOut) => {
+    const res = await fetch(`${API_URL}/api/availability?checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(checkOut)}`)
+    if (!res.ok) throw new Error('availability')
+    return (await res.json()).available
+  },
   // The free server sleeps when idle; ping it early so it's awake by the time a guest books
   wake: () => fetch(API_URL + '/health').catch(() => {}),
 }

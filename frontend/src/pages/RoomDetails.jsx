@@ -8,6 +8,7 @@ import Amenity from '../components/Amenity'
 import RoomCard from '../components/RoomCard'
 import Reveal from '../components/Reveal'
 import { useRooms } from '../context/RoomsContext'
+import { useAvailability } from '../lib/useAvailability'
 import { useBooking } from '../context/BookingContext'
 import { addDays, formatLKR, nightsBetween, priceBreakdown, today } from '../utils'
 import NotFound from './NotFound'
@@ -19,12 +20,15 @@ export default function RoomDetails() {
   const { search, setSearch } = useBooking()
   const [active, setActive] = useState(0)
   const navigate = useNavigate()
+  const { available, loading: availLoading } = useAvailability(search.checkIn, search.checkOut)
 
   if (!room) return loading ? <div className="page-loading"><span className="spinner" /></div> : <NotFound />
 
   const nights = nightsBetween(search.checkIn, search.checkOut)
   const price = priceBreakdown(room.price, nights)
   const tooMany = search.guests > room.guests
+  const left = available?.[room.id]
+  const soldOut = left === 0
   const others = rooms.filter((r) => r.id !== room.id).slice(0, 3)
 
   const update = (key, value) => {
@@ -138,10 +142,15 @@ export default function RoomDetails() {
               </div>
 
               {tooMany && <p className="warn">This room fits up to {room.guests} guests.</p>}
+              {nights > 0 && !tooMany && (
+                availLoading ? <p className="avail-line">Checking availability…</p>
+                : soldOut ? <p className="warn">Sold out for these dates. Please try other dates.</p>
+                : left != null && <p className="avail-line avail-line--ok">✓ Available{left <= 2 ? ` · only ${left} left` : ''}</p>
+              )}
 
               <button
                 className="btn btn-gold btn-block btn-lg"
-                disabled={nights < 1 || tooMany}
+                disabled={nights < 1 || tooMany || soldOut}
                 onClick={() => navigate(`/booking/${room.id}`)}
               >
                 Reserve Now <ArrowRight size={18} />

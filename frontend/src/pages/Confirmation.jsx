@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { CheckCircle2, CalendarDays, Users, Mail, Printer, ArrowRight } from 'lucide-react'
 import { useBookingByRef } from '../lib/bookings'
 import { formatLKR, prettyDate } from '../utils'
+import { isLive, statusClass, statusLabel } from '../lib/status'
 import NotFound from './NotFound'
 
 export default function Confirmation() {
@@ -9,7 +10,7 @@ export default function Confirmation() {
   const { booking: b, loading } = useBookingByRef(ref)
   if (loading) return <div className="page-loading"><span className="spinner" /></div>
   if (!b) return <NotFound />
-  const ok = b.status === 'Confirmed'
+  const ok = isLive(b)
 
   return (
     <section className="section confirm-page">
@@ -27,7 +28,7 @@ export default function Confirmation() {
               <small>Booking reference</small>
               <strong className="ref">{b.ref}</strong>
             </div>
-            <span className={`status ${ok ? 'status--ok' : 'status--bad'}`}>{b.status}</span>
+            <span className={statusClass(b.status)}>{statusLabel(b.status)}</span>
           </div>
           <div className="ticket-room">
             <img src={b.image} alt="" />

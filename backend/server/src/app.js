@@ -7,6 +7,8 @@ import { ApiError } from './errors.js'
 import { createBooking, cancelBooking, syncAdminClaim } from './bookings.js'
 import { createRoom, updateRoom, deleteRoom } from './rooms.js'
 import { signRoomUpload } from './uploads.js'
+import { getAvailability } from './availability.js'
+import { changeBookingStatus, addNote, deleteNote } from './bookingStatus.js'
 import { db } from './firebase.js'
 
 const origins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',').map((s) => s.trim()).filter(Boolean)
@@ -61,6 +63,9 @@ const handle = (fn) => async (req, res, next) => {
 // Health check (Render pings this; also handy to wake the free server up)
 app.get('/health', (_req, res) => res.json({ ok: true }))
 
+// Public: free rooms per room type for the chosen dates (no personal data)
+app.get('/api/availability', handle((req) => getAvailability(req.query)))
+
 app.post('/api/bookings', writeLimit, requireUser, handle((req) => createBooking(req.user, req.body)))
 app.post('/api/bookings/:ref/cancel', writeLimit, requireUser, handle((req) => cancelBooking(req.user, req.params.ref)))
 app.post('/api/me/sync-admin', requireUser, handle((req) => syncAdminClaim(req.user)))
@@ -69,6 +74,11 @@ app.post('/api/me/sync-admin', requireUser, handle((req) => syncAdminClaim(req.u
 app.post('/api/admin/rooms', writeLimit, requireUser, requireAdmin, handle((req) => createRoom(db, req.body)))
 app.put('/api/admin/rooms/:id', writeLimit, requireUser, requireAdmin, handle((req) => updateRoom(db, req.params.id, req.body)))
 app.delete('/api/admin/rooms/:id', writeLimit, requireUser, requireAdmin, handle((req) => deleteRoom(db, req.params.id)))
+// Front desk (staff): check-in / check-out / no-show, and internal notes
+app.post('/api/admin/bookings/:ref/status', writeLimit, requireUser, requireAdmin, handle((req) => changeBookingStatus(req.user, req.params.ref, req.body?.action)))
+app.post('/api/admin/bookings/:ref/notes', writeLimit, requireUser, requireAdmin, handle((req) => addNote(req.user, req.params.ref, req.body)))
+app.delete('/api/admin/bookings/:ref/notes/:id', writeLimit, requireUser, requireAdmin, handle((req) => deleteNote(req.params.ref, req.params.id)))
+
 app.post('/api/admin/uploads/sign', requireUser, requireAdmin, handle(() => signRoomUpload()))
 
 app.use((_req, _res, next) => next(new ApiError('not-found', 'Not found.')))

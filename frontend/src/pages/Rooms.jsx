@@ -6,12 +6,14 @@ import RoomCard from '../components/RoomCard'
 import Reveal from '../components/Reveal'
 import { images } from '../data/rooms'
 import { useRooms, CATEGORIES } from '../context/RoomsContext'
+import { useAvailability } from '../lib/useAvailability'
 import { useBooking } from '../context/BookingContext'
 import { formatLKR } from '../utils'
 
 export default function Rooms() {
   const { search } = useBooking()
   const { rooms, loading, error } = useRooms()
+  const { available } = useAvailability(search.checkIn, search.checkOut)
   const MAX_PRICE = useMemo(() => Math.max(10000, ...rooms.map((r) => r.price)), [rooms])
   const [type, setType] = useState('All')
   const [maxPrice, setMaxPrice] = useState(Infinity)
@@ -26,8 +28,10 @@ export default function Rooms() {
     if (sort === 'price-asc') r = [...r].sort((a, b) => a.price - b.price)
     if (sort === 'price-desc') r = [...r].sort((a, b) => b.price - a.price)
     if (sort === 'rating') r = [...r].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+    // rooms that are full for the chosen dates go last
+    if (available) r = [...r].sort((a, b) => (available[a.id] === 0) - (available[b.id] === 0))
     return r
-  }, [rooms, type, priceCap, sort, search.guests])
+  }, [rooms, type, priceCap, sort, search.guests, available])
 
   const reset = () => {
     setType('All')
@@ -120,7 +124,7 @@ export default function Rooms() {
               <div className="room-grid room-grid--two">
                 {list.map((r, i) => (
                   <Reveal key={r.id} variant="left" delay={(i % 2) * 160}>
-                    <RoomCard room={r} />
+                    <RoomCard room={r} left={available?.[r.id]} />
                   </Reveal>
                 ))}
               </div>

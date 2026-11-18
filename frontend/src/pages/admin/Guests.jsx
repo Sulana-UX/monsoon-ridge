@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Search, Mail, Phone } from 'lucide-react'
 import { formatLKR, prettyDate, today } from '../../utils'
+import { Person } from './Avatar'
+import { isLive } from '../../lib/status'
 
 export default function Guests() {
   const { bookings } = useOutletContext()
@@ -18,7 +20,7 @@ export default function Guests() {
         email, name: `${b.guest?.firstName ?? ''} ${b.guest?.lastName ?? ''}`.trim(), phone: b.guest?.phone,
         country: b.guest?.country, stays: 0, nights: 0, spent: 0, cancelled: 0, last: null, next: null,
       }
-      if (b.status === 'Confirmed') {
+      if (isLive(b)) {
         g.stays += 1
         g.nights += b.nights
         g.spent += b.total || 0
@@ -39,6 +41,7 @@ export default function Guests() {
     <>
       <div className="admin-head">
         <div>
+          <span className="eyebrow">People</span>
           <h1>Guests</h1>
           <p className="muted">{guests.length} guest{guests.length === 1 ? '' : 's'} · sorted by total spend</p>
         </div>
@@ -60,9 +63,10 @@ export default function Guests() {
               {shown.map((g) => (
                 <tr key={g.email}>
                   <td data-label="Guest">
-                    <strong>{g.name || '—'}</strong>
-                    <small><Mail size={12} /> <a href={`mailto:${g.email}`}>{g.email}</a></small>
-                    {g.phone && <small><Phone size={12} /> <a href={`tel:${g.phone.replace(/[^\d+]/g, '')}`}>{g.phone}</a></small>}
+                    <Person name={g.name || g.email}>
+                      <small><Mail size={12} /> <a href={`mailto:${g.email}`}>{g.email}</a></small>
+                      {g.phone && <small><Phone size={12} /> <a href={`tel:${g.phone.replace(/[^\d+]/g, '')}`}>{g.phone}</a></small>}
+                    </Person>
                   </td>
                   <td data-label="Country">{g.country || '—'}</td>
                   <td data-label="Stays">{g.stays}{g.cancelled > 0 && <small className="muted">{g.cancelled} cancelled</small>}</td>

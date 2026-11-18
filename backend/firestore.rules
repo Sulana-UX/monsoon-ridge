@@ -14,6 +14,13 @@ service cloud.firestore {
       allow get, list: if isAdmin()
         || (signedIn() && resource.data.uid == request.auth.uid);
       allow write: if false;
+
+      // Staff-only notes on a booking. Guests can read their booking,
+      // but never these. Written only through the API.
+      match /notes/{noteId} {
+        allow read: if isAdmin();
+        allow write: if false;
+      }
     }
 
     // Rooms: anyone can read rooms shown on the website; staff can read hidden ones too.

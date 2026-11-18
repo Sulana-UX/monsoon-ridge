@@ -134,3 +134,36 @@ test('upload signature matches Cloudinary’s algorithm and never returns the se
   delete process.env.CLOUDINARY_API_SECRET
   assert.throws(() => signRoomUpload(), /not set up/)
 })
+
+/* ---------- front desk: check-in / check-out / no-show ---------- */
+import { planStatusChange, nightsFrom } from '../src/statusRules.js'
+
+const stay = (status = 'Confirmed') => ({ status, checkIn: '2026-12-10', checkOut: '2026-12-13' }) // 3 nights
+
+test('check-in only on the stay dates and only when confirmed', () => {
+  assert.throws(() => planStatusChange(stay(), 'check-in', '2026-12-09'), /Too early/)
+  assert.equal(planStatusChange(stay(), 'check-in', '2026-12-10').status, 'CheckedIn')
+  assert.equal(planStatusChange(stay(), 'check-in', '2026-12-12').status, 'CheckedIn') // late arrival
+  assert.throws(() => planStatusChange(stay(), 'check-in', '2026-12-13'), /already ended/)
+  assert.throws(() => planStatusChange(stay('Cancelled'), 'check-in', '2026-12-10'), /Only confirmed/)
+})
+
+test('early check-out frees tonight onwards; on-time frees nothing', () => {
+  const early = planStatusChange(stay('CheckedIn'), 'check-out', '2026-12-11')
+  assert.equal(early.status, 'CheckedOut')
+  assert.equal(early.fields.checkOutActual, '2026-12-11')
+  assert.deepEqual(nightsFrom(stay(), early.freeFrom), ['2026-12-11', '2026-12-12'])
+  const onTime = planStatusChange(stay('CheckedIn'), 'check-out', '2026-12-13')
+  assert.equal(onTime.freeFrom, null)
+  assert.equal(onTime.fields.checkOutActual, '2026-12-13')
+  assert.throws(() => planStatusChange(stay(), 'check-out', '2026-12-11'), /checked-in/)
+})
+
+test('no-show frees the rest of the stay; undo check-in works', () => {
+  const ns = planStatusChange(stay(), 'no-show', '2026-12-11')
+  assert.equal(ns.status, 'NoShow')
+  assert.deepEqual(nightsFrom(stay(), ns.freeFrom), ['2026-12-11', '2026-12-12'])
+  assert.throws(() => planStatusChange(stay(), 'no-show', '2026-12-09'), /isn't due/)
+  assert.equal(planStatusChange(stay('CheckedIn'), 'undo-check-in', '2026-12-10').status, 'Confirmed')
+  assert.throws(() => planStatusChange(stay(), 'delete-everything', '2026-12-10'), /Unknown action/)
+})

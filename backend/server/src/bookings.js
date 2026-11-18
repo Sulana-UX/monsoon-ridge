@@ -5,7 +5,7 @@
  *   - keep per-night inventory in a transaction, so a room can't be over-booked
  */
 import { randomInt } from 'node:crypto'
-import { FieldValue, Timestamp } from 'firebase-admin/firestore'
+import { FieldValue } from 'firebase-admin/firestore'
 import { auth as adminAuth, db } from './firebase.js'
 import { ApiError } from './errors.js'
 import { priceFor } from './rooms.js'
@@ -25,14 +25,14 @@ export async function createBooking(user, body) {
   const req = parseBookingRequest(body)
 
   // Per-account limits (outside the transaction; they only need to be roughly right)
-  const mine = db.collection('bookings').where('uid', '==', user.uid)
-  const recent = await mine.where('createdAt', '>=', Timestamp.fromMillis(Date.now() - RATE_WINDOW_MS)).count().get()
-  if (recent.data().count >= RATE_MAX) {
+  // One equality query (needs no composite index); counted in memory
+  const mine = (await db.collection('bookings').where('uid', '==', user.uid).select('createdAt', 'status', 'checkOut').get()).docs
+  const since = Date.now() - RATE_WINDOW_MS
+  if (mine.filter((d) => d.get('createdAt')?.toMillis() >= since).length >= RATE_MAX) {
     throw new ApiError('resource-exhausted', 'Too many bookings in a short time. Please try again in a few minutes.')
   }
   const today = hotelToday()
-  const active = await mine.where('status', '==', 'Confirmed').get()
-  if (active.docs.filter((d) => d.get('checkOut') > today).length >= ACTIVE_MAX) {
+  if (mine.filter((d) => d.get('status') === 'Confirmed' && d.get('checkOut') > today).length >= ACTIVE_MAX) {
     throw new ApiError('resource-exhausted', 'You have reached the limit of upcoming bookings. Please contact the hotel.')
   }
 

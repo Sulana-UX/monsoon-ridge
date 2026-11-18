@@ -5,6 +5,7 @@ import {
   Check, CalendarDays, Users, ChevronLeft, ShieldCheck,
 } from 'lucide-react'
 import { useRooms } from '../context/RoomsContext'
+import { useAvailability } from '../lib/useAvailability'
 import { useBooking } from '../context/BookingContext'
 import { useAuth } from '../context/AuthContext'
 import { api, friendlyError } from '../lib/firebase'
@@ -32,6 +33,7 @@ export default function Booking() {
 
   // The free API server sleeps when idle: wake it while the guest fills in the form
   useEffect(() => { api.wake() }, [])
+  const { available } = useAvailability(search.checkIn, search.checkOut)
 
   if (!room) return roomsLoading ? <div className="page-loading"><span className="spinner" /></div> : <NotFound />
 
@@ -165,9 +167,14 @@ export default function Booking() {
               <span>I agree to the hotel's booking terms and cancellation policy.</span>
             </label>
             {errors.dates && <p className="err">{errors.dates}</p>}
+            {available?.[room.id] === 0 && (
+              <p className="auth-msg auth-msg--err" role="alert">
+                Sorry, this room is sold out for these dates. <Link to="/rooms">Choose another room</Link> or change your dates.
+              </p>
+            )}
             {serverError && <p className="auth-msg auth-msg--err" role="alert">{serverError}</p>}
 
-            <button type="submit" className="btn btn-gold btn-lg btn-block" disabled={submitting}>
+            <button type="submit" className="btn btn-gold btn-lg btn-block" disabled={submitting || available?.[room.id] === 0}>
               {submitting ? <><span className="spinner spinner--sm" /> Confirming…</> : <><ShieldCheck size={18} /> Confirm Booking · {formatLKR(price.total)}</>}
             </button>
           </form>
