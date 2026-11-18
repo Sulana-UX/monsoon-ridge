@@ -1,0 +1,54 @@
+import { Link } from 'react-router-dom'
+import { Star, Users, Maximize, BedDouble, ArrowRight, Heart } from 'lucide-react'
+import { useState } from 'react'
+import Amenity from './Amenity'
+import { formatLKR } from '../utils'
+
+export default function RoomCard({ room }) {
+  const [liked, setLiked] = useState(false)
+  return (
+    <article className="room-card">
+      <div className="room-card-media">
+        <img src={room.image} alt={room.name} loading="lazy" />
+        <span className="badge">{room.type}</span>
+        <button
+          className={`like ${liked ? 'is-liked' : ''}`}
+          onClick={() => setLiked((l) => !l)}
+          aria-label="Save to favourites"
+        >
+          <Heart size={18} />
+        </button>
+        <div className="room-card-price">
+          <strong>{formatLKR(room.price)}</strong>
+          <span>/ night</span>
+        </div>
+      </div>
+      <div className="room-card-body">
+        <div className="room-card-top">
+          <h3>{room.name}</h3>
+          <span className="rating">
+            <Star size={14} fill="currentColor" /> {room.rating.toFixed(1)}
+          </span>
+        </div>
+        <p className="muted">{room.short}</p>
+        <div className="room-meta">
+          <span><Maximize size={15} /> {room.size} m²</span>
+          <span><Users size={15} /> Up to {room.guests}</span>
+          <span><BedDouble size={15} /> {room.beds}</span>
+        </div>
+        <div className="room-card-amenities">
+          {room.amenities.slice(0, 5).map((a) => (
+            <Amenity key={a} id={a} showLabel={false} />
+          ))}
+          {room.amenities.length > 5 && <span className="more">+{room.amenities.length - 5}</span>}
+        </div>
+        <div className="room-card-actions">
+          <Link to={`/rooms/${room.id}`} className="btn btn-outline">View Details</Link>
+          <Link to={`/booking/${room.id}`} className="btn btn-dark">
+            Book Now <ArrowRight size={16} />
+          </Link>
+        </div>
+      </div>
+    </article>
+  )
+}

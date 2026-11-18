@@ -1,0 +1,14 @@
+{
+  "name": "monsoon-ridge",
+  "private": true,
+  "scripts": {
+    "install:all": "npm --prefix frontend install && npm --prefix backend/functions install",
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "test": "npm --prefix backend/functions test",
+    "emulators": "firebase emulators:start --only auth,firestore,functions",
+    "deploy:rules": "firebase deploy --only firestore",
+    "deploy:functions": "firebase deploy --only functions",
+    "deploy": "npm run build && firebase deploy"
+  }
+}

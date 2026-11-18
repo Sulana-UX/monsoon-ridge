@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// The browser can only READ, and only what it is allowed to see.
+// All writes go through Cloud Functions (Admin SDK bypasses these rules),
+// so prices, availability and status can never be changed from the client.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+
+    match /bookings/{ref} {
+      // Guests see their own bookings; staff see all of them.
+      allow get, list: if isAdmin()
+        || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false;
+    }
+
+    // Per-night room counts: server only.
+    match /inventory/{id} {
+      allow read, write: if false;
+    }
+
+    // Anything else: closed by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
