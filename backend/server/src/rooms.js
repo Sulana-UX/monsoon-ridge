@@ -118,22 +118,25 @@ export async function updateRoom(db, idParam, body) {
   const id = parseRoomId(idParam)
   const room = parseRoomInput(body)
   const ref = db.collection('rooms').doc(id)
-  await db.runTransaction(async (tx) => {
-    if (!(await tx.get(ref)).exists) throw new ApiError('not-found', 'Room not found.')
+  const before = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref)
+    if (!snap.exists) throw new ApiError('not-found', 'Room not found.')
     tx.update(ref, { ...room, updatedAt: FieldValue.serverTimestamp() })
+    return snap.data()
   })
-  return { id }
+  return { id, before, after: room }
 }
 
 /** Only rooms that were never booked can be deleted; otherwise hide them instead. */
 export async function deleteRoom(db, idParam) {
   const id = parseRoomId(idParam)
   const ref = db.collection('rooms').doc(id)
-  if (!(await ref.get()).exists) throw new ApiError('not-found', 'Room not found.')
+  const snap = await ref.get()
+  if (!snap.exists) throw new ApiError('not-found', 'Room not found.')
   const used = await db.collection('bookings').where('roomId', '==', id).limit(1).get()
   if (!used.empty) {
     throw new ApiError('failed-precondition', 'This room has bookings, so it can\'t be deleted. Turn off "Show on website" to hide it instead.')
   }
   await ref.delete()
-  return { ok: true }
+  return { ok: true, name: snap.get('name') }
 }

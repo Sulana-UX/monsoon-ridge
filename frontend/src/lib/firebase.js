@@ -43,7 +43,7 @@ async function call(path, body, method = 'POST') {
     res = await fetch(API_URL + path, {
       method,
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: method === 'DELETE' ? undefined : JSON.stringify(body ?? {}),
+      body: method === 'DELETE' || method === 'GET' ? undefined : JSON.stringify(body ?? {}),
     })
   } catch {
     throw new ApiError('api/unavailable', 'Could not reach the booking server. Please try again in a moment.')
@@ -71,6 +71,39 @@ export const api = {
   setBookingStatus: (ref, action) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/status`, { action }),
   addNote: (ref, text) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/notes`, { text }),
   deleteNote: (ref, id) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/notes/${encodeURIComponent(id)}`, null, 'DELETE'),
+  // pricing rules & promo codes (staff)
+  savePricing: (rules) => call('/api/admin/pricing', rules, 'PUT'),
+  createPromo: (promo) => call('/api/admin/promos', promo),
+  updatePromo: (code, changes) => call(`/api/admin/promos/${encodeURIComponent(code)}`, changes, 'PUT'),
+  deletePromo: (code) => call(`/api/admin/promos/${encodeURIComponent(code)}`, null, 'DELETE'),
+  // staff management
+  listStaff: () => call('/api/admin/staff', null, 'GET'),
+  addStaff: (email) => call('/api/admin/staff', { email }),
+  removeStaff: (email) => call(`/api/admin/staff/${encodeURIComponent(email)}`, null, 'DELETE'),
+  // guest communication (staff)
+  resendConfirmation: (ref) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/email`),
+  setMessageStatus: (id, status) => call(`/api/admin/messages/${encodeURIComponent(id)}`, { status }, 'PUT'),
+  deleteMessage: (id) => call(`/api/admin/messages/${encodeURIComponent(id)}`, null, 'DELETE'),
+  // Public: contact form (no account needed)
+  sendContact: async (msg) => {
+    let res
+    try {
+      res = await fetch(`${API_URL}/api/contact`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(msg) })
+    } catch {
+      throw new ApiError('api/unavailable', 'Could not reach the server. Please try again in a moment, or call us.')
+    }
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new ApiError(`api/${data.error?.code || 'internal'}`, data.error?.message || 'Something went wrong. Please try again.')
+    return data
+  },
+  // Public: exact price of a stay (seasons, weekends, promo) => { quote, promoError }
+  quote: async ({ roomId, checkIn, checkOut, promo }) => {
+    const q = new URLSearchParams({ roomId, checkIn, checkOut, ...(promo && { promo }) })
+    const res = await fetch(`${API_URL}/api/quote?${q}`)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new ApiError(`api/${data.error?.code || 'internal'}`, data.error?.message || 'Could not get a price.')
+    return data
+  },
   // Public: rooms free for the whole stay, per room id
   availability: async (checkIn, checkOut) => {
     const res = await fetch(`${API_URL}/api/availability?checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(checkOut)}`)

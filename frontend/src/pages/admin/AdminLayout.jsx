@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, CalendarDays, CalendarRange, CalendarOff, Users, LogOut, BedDouble, Menu, ChevronRight } from 'lucide-react'
-import { useBookings, useBlocks } from '../../lib/bookings'
+import { LayoutDashboard, CalendarDays, CalendarRange, CalendarOff, Users, LogOut, BedDouble, Menu, ChevronRight, Tag, BarChart3, Inbox as InboxIcon, ShieldCheck, History } from 'lucide-react'
+import { useBookings, useBlocks, useMessages } from '../../lib/bookings'
 import { useAuth } from '../../context/AuthContext'
 import { useAllRooms } from '../../context/RoomsContext'
 import { prettyDate, today } from '../../utils'
@@ -16,6 +16,11 @@ const NAV = [
   { to: '/admin/rooms', label: 'Rooms', icon: BedDouble },
   { to: '/admin/blocks', label: 'Blocked dates', icon: CalendarOff },
   { to: '/admin/guests', label: 'Guests', icon: Users },
+  { to: '/admin/inbox', label: 'Inbox', icon: InboxIcon, count: 'unread' },
+  { to: '/admin/pricing', label: 'Pricing & promos', icon: Tag },
+  { to: '/admin/reports', label: 'Reports', icon: BarChart3 },
+  { to: '/admin/staff', label: 'Staff', icon: ShieldCheck },
+  { to: '/admin/activity', label: 'Activity log', icon: History },
 ]
 
 const MountainMark = () => (
@@ -36,10 +41,13 @@ export default function AdminLayout() {
   const roomsState = useAllRooms()
   // Blocks are optional data: if the rules aren't deployed yet, the dashboard still works
   const { blocks } = useBlocks()
+  const { messages, error: messagesError } = useMessages()
   const data = {
     bookings: bookingsState.bookings,
     rooms: roomsState.rooms,
     blocks,
+    messages,
+    messagesError,
     loading: bookingsState.loading || roomsState.loading,
     error: bookingsState.error || roomsState.error,
   }
@@ -47,7 +55,8 @@ export default function AdminLayout() {
   const t = today()
   const counts = useMemo(() => ({
     upcoming: bookingsState.bookings.filter((b) => b.status === 'Confirmed' && b.checkOut > t).length,
-  }), [bookingsState.bookings, t])
+    unread: messages.filter((m) => m.status === 'new').length,
+  }), [bookingsState.bookings, messages, t])
 
   useEffect(() => setMenuOpen(false), [pathname])
 

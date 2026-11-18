@@ -256,7 +256,7 @@ function RoomEditor({ id }) {
             <div className="form-grid">
               <label className="field"><span>Price per night (LKR)</span>
                 <div className="input-wrap"><input type="number" min={1000} step={500} value={form.price} onChange={set('price')} placeholder="18500" /></div>
-                {example > 0 && <small className="hint">Guest pays {formatLKR(example)} for 2 nights incl. service & tax</small>}
+                {example > 0 && <small className="hint">Base rate: guest pays {formatLKR(example)} for 2 nights incl. service & tax. Season and weekend prices are added on top (Pricing tab).</small>}
               </label>
               <label className="field"><span>Number of rooms of this type</span>
                 <div className="input-wrap"><input type="number" min={0} max={200} value={form.units} onChange={set('units')} /></div>

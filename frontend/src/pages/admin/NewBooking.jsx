@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useOutletContext } from 'react-router-dom'
-import { ChevronLeft, Footprints, PhoneCall, Save, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { ChevronLeft, Footprints, PhoneCall, Save, CheckCircle2, AlertTriangle, Tag } from 'lucide-react'
 import { api, friendlyError } from '../../lib/firebase'
 import { useAvailability } from '../../lib/useAvailability'
-import { addDays, formatLKR, nightsBetween, priceBreakdown, today } from '../../utils'
+import { addDays, formatLKR, nightsBetween, today } from '../../utils'
+import { useQuote } from '../../lib/useQuote'
+import PriceLines from '../../components/PriceLines'
 
 const COUNTRIES = ['Sri Lanka', 'India', 'United Kingdom', 'United States', 'Australia', 'Germany', 'Other']
 
@@ -16,7 +18,7 @@ export default function NewBooking() {
   const [f, setF] = useState({
     source: 'walk-in', roomId: bookable[0]?.id || '', checkIn: t, checkOut: addDays(t, 1), guests: 2,
     firstName: '', lastName: '', phone: '', email: '', country: 'Sri Lanka', arrival: '', requests: '',
-    payment: 'hotel', checkInNow: true,
+    payment: 'hotel', checkInNow: true, promo: '',
   })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -24,7 +26,7 @@ export default function NewBooking() {
 
   const room = rooms.find((r) => r.id === f.roomId)
   const nights = nightsBetween(f.checkIn, f.checkOut)
-  const price = room && nights > 0 ? priceBreakdown(room.price, nights) : null
+  const { quote: price, promoError, loading: quoting } = useQuote(room, f.checkIn, f.checkOut, f.promo)
   const { available, loading: availLoading } = useAvailability(f.checkIn, f.checkOut)
   const left = available?.[f.roomId]
   const startsToday = f.checkIn === t
@@ -35,6 +37,7 @@ export default function NewBooking() {
       : nights < 1 ? 'Check-out must be after check-in.'
         : tooMany ? `${room.name} sleeps up to ${room.guests} guests.`
           : left === 0 ? `${room.name} is sold out for these dates.`
+            : f.promo && promoError && !quoting ? promoError
             : ''
 
   const submit = async (e) => {
@@ -48,6 +51,7 @@ export default function NewBooking() {
       const { data } = await api.createStaffBooking({
         source: f.source,
         roomId: f.roomId, checkIn: f.checkIn, checkOut: f.checkOut, guests: Number(f.guests), payment: f.payment,
+        ...(f.promo && { promo: f.promo }),
         checkInNow: f.source === 'walk-in' && startsToday && f.checkInNow,
         guest: {
           firstName: f.firstName, lastName: f.lastName, phone: f.phone, email: f.email.trim(),
@@ -140,14 +144,12 @@ export default function NewBooking() {
         <aside className="editor-side">
           <section className="admin-card">
             <h3>Summary</h3>
-            {price ? (
-              <div className="price-lines">
-                <div><span>{formatLKR(room.price)} × {nights} night{nights === 1 ? '' : 's'}</span><span>{formatLKR(price.subtotal)}</span></div>
-                <div><span>Service charge (10%)</span><span>{formatLKR(price.service)}</span></div>
-                <div><span>Taxes (8%)</span><span>{formatLKR(price.tax)}</span></div>
-                <div className="total"><span>Total</span><span>{formatLKR(price.total)}</span></div>
-              </div>
-            ) : <p className="muted small">Choose a room and dates.</p>}
+            {price ? <PriceLines price={price} /> : <p className="muted small">Choose a room and dates.</p>}
+            <label className="field nb-pay"><span><Tag size={14} /> Promo code <em>(optional)</em></span>
+              <div className="input-wrap"><input value={f.promo} placeholder="e.g. MONSOON10" autoComplete="off"
+                onChange={(e) => setF((x) => ({ ...x, promo: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20) }))} /></div>
+              {f.promo && !quoting && !promoError && price?.promo && <small className="promo-ok">{price.promo.percent}% off applied</small>}
+            </label>
             <label className="field nb-pay"><span>Payment</span>
               <div className="input-wrap"><select value={f.payment} onChange={set('payment')}>
                 <option value="hotel">Pay at hotel</option>

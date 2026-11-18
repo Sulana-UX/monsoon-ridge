@@ -1,4 +1,5 @@
 import { ApiError } from './errors.js'
+import { parsePromoCode } from './pricing.js'
 
 const HOTEL_TZ = 'Asia/Colombo'
 const DAY = 86400000
@@ -43,17 +44,9 @@ const str = (v, field, { min = 0, max, pattern } = {}) => {
 /** staff: true = booking made by hotel staff (walk-in / phone): guest email is optional. */
 export function parseBookingRequest(data, { staff = false } = {}) {
   if (!data || typeof data !== 'object') bad('Missing booking details.')
-  const { roomId, checkIn, checkOut, guests, payment, guest } = data
-
-  if (typeof roomId !== 'string' || !/^[a-z0-9-]{1,40}$/.test(roomId)) bad('Unknown room.')
-  if (!isValidISODate(checkIn) || !isValidISODate(checkOut)) bad('Please choose valid dates.')
-
-  const today = hotelToday()
-  if (checkIn < today) bad('Check-in cannot be in the past.')
-  if (daysBetween(today, checkIn) > MAX_DAYS_AHEAD) bad(`Bookings open up to ${MAX_DAYS_AHEAD} days ahead.`)
-  const nights = daysBetween(checkIn, checkOut)
-  if (nights < 1) bad('Check-out must be after check-in.')
-  if (nights > MAX_NIGHTS) bad(`Stays are limited to ${MAX_NIGHTS} nights online. Please contact us for longer stays.`)
+  const { guests, payment, guest } = data
+  const { roomId, checkIn, checkOut, nights } = parseStay(data)
+  const promo = data.promo == null || data.promo === '' ? null : parsePromoCode(data.promo)
 
   if (!Number.isInteger(guests) || guests < 1 || guests > 10) bad('Number of guests is invalid.')
   if (!PAYMENTS.includes(payment)) bad('Payment method is invalid.')
@@ -71,7 +64,21 @@ export function parseBookingRequest(data, { staff = false } = {}) {
   if (!COUNTRIES.includes(g.country)) bad('Country is invalid.')
   if (g.phone.replace(/\D/g, '').length < 9) bad('Phone is invalid.')
 
-  return { roomId, checkIn, checkOut, nights, guests, payment, guest: g }
+  return { roomId, checkIn, checkOut, nights, guests, payment, guest: g, promo }
+}
+
+/** Room + dates of a stay (used by bookings and price quotes). */
+export function parseStay({ roomId, checkIn, checkOut } = {}) {
+  if (typeof roomId !== 'string' || !/^[a-z0-9-]{1,40}$/.test(roomId)) bad('Unknown room.')
+  if (!isValidISODate(checkIn) || !isValidISODate(checkOut)) bad('Please choose valid dates.')
+
+  const today = hotelToday()
+  if (checkIn < today) bad('Check-in cannot be in the past.')
+  if (daysBetween(today, checkIn) > MAX_DAYS_AHEAD) bad(`Bookings open up to ${MAX_DAYS_AHEAD} days ahead.`)
+  const nights = daysBetween(checkIn, checkOut)
+  if (nights < 1) bad('Check-out must be after check-in.')
+  if (nights > MAX_NIGHTS) bad(`Stays are limited to ${MAX_NIGHTS} nights online. Please contact us for longer stays.`)
+  return { roomId, checkIn, checkOut, nights }
 }
 
 export const parseRef = (ref) => {

@@ -24,5 +24,15 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false # secret
+      - key: BREVO_API_KEY
+        sync: false # secret
+      - key: MAIL_FROM
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: Monsoon Ridge
+      - key: STAFF_ALERT_EMAILS
+        sync: false
+      - key: SITE_URL
+        value: https://monsoon-ridge.web.app
       - key: FIREBASE_SERVICE_ACCOUNT
         sync: false # secret: paste the service-account JSON in the dashboard

@@ -10,7 +10,9 @@ import Reveal from '../components/Reveal'
 import { useRooms } from '../context/RoomsContext'
 import { useAvailability } from '../lib/useAvailability'
 import { useBooking } from '../context/BookingContext'
-import { addDays, formatLKR, nightsBetween, priceBreakdown, today } from '../utils'
+import { addDays, formatLKR, nightsBetween, today } from '../utils'
+import { useQuote } from '../lib/useQuote'
+import PriceLines from '../components/PriceLines'
 import NotFound from './NotFound'
 
 export default function RoomDetails() {
@@ -21,11 +23,11 @@ export default function RoomDetails() {
   const [active, setActive] = useState(0)
   const navigate = useNavigate()
   const { available, loading: availLoading } = useAvailability(search.checkIn, search.checkOut)
+  const { quote: price } = useQuote(room, search.checkIn, search.checkOut)
 
   if (!room) return loading ? <div className="page-loading"><span className="spinner" /></div> : <NotFound />
 
   const nights = nightsBetween(search.checkIn, search.checkOut)
-  const price = priceBreakdown(room.price, nights)
   const tooMany = search.guests > room.guests
   const left = available?.[room.id]
   const soldOut = left === 0
@@ -157,14 +159,7 @@ export default function RoomDetails() {
               </button>
               <p className="bw-note">You won't be charged yet</p>
 
-              {nights > 0 && (
-                <div className="price-lines">
-                  <div><span>{formatLKR(room.price)} × {nights} night{nights > 1 ? 's' : ''}</span><span>{formatLKR(price.subtotal)}</span></div>
-                  <div><span>Service charge (10%)</span><span>{formatLKR(price.service)}</span></div>
-                  <div><span>Taxes (8%)</span><span>{formatLKR(price.tax)}</span></div>
-                  <div className="total"><span>Total</span><span>{formatLKR(price.total)}</span></div>
-                </div>
-              )}
+              {nights > 0 && <PriceLines price={price} />}
             </aside>
           </div>
         </div>

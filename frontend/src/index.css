@@ -422,6 +422,19 @@ input[type='range'] { width: 100%; accent-color: var(--gold-2); }
 .price-lines { margin-top: 20px; display: grid; gap: 10px; font-size: .93rem; }
 .price-lines > div { display: flex; justify-content: space-between; color: var(--muted); }
 .price-lines .total { padding-top: 14px; border-top: 1px solid var(--line); font-weight: 700; font-size: 1.05rem; color: var(--ink); }
+.price-nights { color: var(--muted); }
+.price-nights summary { display: flex; justify-content: space-between; cursor: pointer; list-style: none; }
+.price-nights summary::-webkit-details-marker { display: none; }
+.price-nights summary small { text-decoration: underline; text-underline-offset: 2px; font-size: .8rem; }
+.price-nights ul { list-style: none; margin: 8px 0 2px; padding: 8px 0 0 12px; border-left: 2px solid var(--line); display: grid; gap: 6px; font-size: .85rem; }
+.price-nights li { display: flex; justify-content: space-between; gap: 12px; }
+.price-lines .price-discount { color: #1f7a4d; font-weight: 600; }
+.promo-field { display: grid; gap: 6px; margin-top: 18px; font-size: .88rem; }
+.promo-field > span { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--ink); }
+.promo-field input { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font: inherit; letter-spacing: .06em; background: #fff; }
+.promo-field input:focus { outline: 2px solid var(--gold, #b8862f); outline-offset: 1px; }
+.promo-field small:empty { display: none; }
+.promo-ok { color: #1f7a4d; font-weight: 600; font-size: .82rem; }
 
 /* ============ BOOKING PAGE ============ */
 .booking-page, .confirm-page, .notfound { padding-top: calc(var(--nav-h) + 40px); background: var(--cream); min-height: 100vh; }
@@ -849,3 +862,6 @@ button.nav-link { background: none; border: none; color: inherit; text-align: le
 .btn.is-disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
 .avail-line { font-size: .88rem; color: var(--muted); margin: 0 0 12px; }
 .avail-line--ok { color: var(--ok); font-weight: 600; }
+
+/* Contact form spam trap: off-screen, never shown to people */
+.hp-field { position: absolute !important; left: -10000px; width: 1px; height: 1px; overflow: hidden; }

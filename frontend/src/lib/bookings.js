@@ -72,3 +72,64 @@ export function useBlocks() {
   ), [])
   return state
 }
+
+/** Staff: season / weekend price rules (settings/pricing). rules = null until saved once. */
+export function usePricingRules() {
+  const [state, setState] = useState({ rules: null, loading: true, error: null })
+  useEffect(() => onSnapshot(
+    doc(db, 'settings', 'pricing'),
+    (snap) => setState({ rules: snap.exists() ? snap.data() : null, loading: false, error: null }),
+    (error) => setState({ rules: null, loading: false, error }),
+  ), [])
+  return state
+}
+
+/** Staff: all promo codes, newest first. */
+export function usePromos() {
+  const [state, setState] = useState({ promos: [], loading: true, error: null })
+  useEffect(() => onSnapshot(
+    collection(db, 'promos'),
+    (snap) => setState({
+      promos: snap.docs.map(fromSnap).sort((a, b) => (b.createdAt?.getTime?.() ?? 0) - (a.createdAt?.getTime?.() ?? 0)),
+      loading: false, error: null,
+    }),
+    (error) => setState({ promos: [], loading: false, error }),
+  ), [])
+  return state
+}
+
+/** Staff: contact-form messages, newest first. */
+export function useMessages() {
+  const [state, setState] = useState({ messages: [], loading: true, error: null })
+  useEffect(() => onSnapshot(
+    query(collection(db, 'messages'), orderBy('createdAt', 'desc'), limit(300)),
+    (snap) => setState({ messages: snap.docs.map((d) => ({ id: d.id, ...fromSnap(d) })), loading: false, error: null }),
+    (error) => setState({ messages: [], loading: false, error }),
+  ), [])
+  return state
+}
+
+/** Staff: activity log, newest first. `max` grows with "Load more". */
+export function useActivity(max = 200) {
+  const [state, setState] = useState({ entries: [], loading: true, error: null })
+  useEffect(() => onSnapshot(
+    query(collection(db, 'activity'), orderBy('at', 'desc'), limit(max)),
+    (snap) => setState({ entries: snap.docs.map((d) => ({ id: d.id, ...fromSnap(d) })), loading: false, error: null }),
+    (error) => setState({ entries: [], loading: false, error }),
+  ), [max])
+  return state
+}
+
+/** Staff: activity for one booking (equality filter only, so no extra index is needed). */
+export function useActivityFor(targetId) {
+  const [state, setState] = useState({ entries: [], loading: true, error: null })
+  useEffect(() => onSnapshot(
+    query(collection(db, 'activity'), where('target.id', '==', targetId), limit(100)),
+    (snap) => setState({
+      entries: snap.docs.map((d) => ({ id: d.id, ...fromSnap(d) })).sort((a, b) => (a.at?.getTime?.() ?? Infinity) - (b.at?.getTime?.() ?? Infinity)),
+      loading: false, error: null,
+    }),
+    (error) => setState({ entries: [], loading: false, error }),
+  ), [targetId])
+  return state
+}

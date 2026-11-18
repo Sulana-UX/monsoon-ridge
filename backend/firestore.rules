@@ -36,6 +36,35 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Season / weekend price rules and promo codes: staff read, API-only writes.
+    // Guests never read these; they get a price quote from the API instead.
+    match /settings/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /promos/{code} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Contact-form messages: staff read (dashboard Inbox), API-only writes.
+    match /messages/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Staff list (managed through the API) and the activity log.
+    // Staff can read; nobody can write, edit or delete from the browser,
+    // so the log can't be changed after the fact.
+    match /staff/{email} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /activity/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // Per-night room counts: server only.
     match /inventory/{id} {
       allow read, write: if false;

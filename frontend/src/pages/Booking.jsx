@@ -2,14 +2,16 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   User, Mail, Phone, Globe, Clock, MessageSquare, CreditCard, Building, Lock,
-  Check, CalendarDays, Users, ChevronLeft, ShieldCheck,
+  Check, CalendarDays, Users, ChevronLeft, ShieldCheck, Tag,
 } from 'lucide-react'
 import { useRooms } from '../context/RoomsContext'
 import { useAvailability } from '../lib/useAvailability'
+import { useQuote } from '../lib/useQuote'
+import PriceLines from '../components/PriceLines'
 import { useBooking } from '../context/BookingContext'
 import { useAuth } from '../context/AuthContext'
 import { api, friendlyError } from '../lib/firebase'
-import { formatLKR, nightsBetween, prettyDate, priceBreakdown } from '../utils'
+import { formatLKR, nightsBetween, prettyDate } from '../utils'
 import NotFound from './NotFound'
 
 const steps = ['Choose Room', 'Guest Details', 'Confirmation']
@@ -34,11 +36,13 @@ export default function Booking() {
   // The free API server sleeps when idle: wake it while the guest fills in the form
   useEffect(() => { api.wake() }, [])
   const { available } = useAvailability(search.checkIn, search.checkOut)
+  const [promo, setPromo] = useState('')
+  const { quote: price, promoError, loading: quoting } = useQuote(room, search.checkIn, search.checkOut, promo)
+  const promoOk = promo.trim() && !quoting && price?.promo?.code === promo.trim().toUpperCase()
 
   if (!room) return roomsLoading ? <div className="page-loading"><span className="spinner" /></div> : <NotFound />
 
   const nights = nightsBetween(search.checkIn, search.checkOut)
-  const price = priceBreakdown(room.price, nights)
   const set = (k) => (e) =>
     setForm({ ...form, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value })
 
@@ -58,6 +62,7 @@ export default function Booking() {
   const submit = async (e) => {
     e.preventDefault()
     if (submitting || !validate()) return
+    if (promo.trim() && promoError) return setServerError(`${promoError} Remove it to book without a discount.`)
     setSubmitting(true)
     setServerError('')
     try {
@@ -70,6 +75,7 @@ export default function Booking() {
         guests: search.guests,
         payment,
         guest,
+        ...(promo.trim() && { promo: promo.trim() }),
       })
       navigate(`/confirmation/${data.ref}`)
     } catch (err) {
@@ -175,7 +181,7 @@ export default function Booking() {
             {serverError && <p className="auth-msg auth-msg--err" role="alert">{serverError}</p>}
 
             <button type="submit" className="btn btn-gold btn-lg btn-block" disabled={submitting || available?.[room.id] === 0}>
-              {submitting ? <><span className="spinner spinner--sm" /> Confirming…</> : <><ShieldCheck size={18} /> Confirm Booking · {formatLKR(price.total)}</>}
+              {submitting ? <><span className="spinner spinner--sm" /> Confirming…</> : <><ShieldCheck size={18} /> Confirm Booking{price ? ` · ${formatLKR(price.total)}` : ''}</>}
             </button>
           </form>
 
@@ -191,12 +197,15 @@ export default function Booking() {
                 <div><CalendarDays size={16} /><span><small>Check-out</small>{prettyDate(search.checkOut)}</span></div>
                 <div><Users size={16} /><span><small>Guests</small>{search.guests} guest{search.guests > 1 ? 's' : ''} · {nights} night{nights !== 1 ? 's' : ''}</span></div>
               </div>
-              <div className="price-lines">
-                <div><span>{formatLKR(room.price)} × {nights}</span><span>{formatLKR(price.subtotal)}</span></div>
-                <div><span>Service charge</span><span>{formatLKR(price.service)}</span></div>
-                <div><span>Taxes</span><span>{formatLKR(price.tax)}</span></div>
-                <div className="total"><span>Total</span><span>{formatLKR(price.total)}</span></div>
-              </div>
+              <PriceLines price={price} />
+              <label className="promo-field">
+                <span><Tag size={15} /> Promo code</span>
+                <input value={promo} onChange={(e) => setPromo(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20))}
+                  placeholder="e.g. MONSOON10" autoComplete="off" aria-describedby="promo-msg" />
+                <small id="promo-msg" className={promoError ? 'err' : 'promo-ok'} role="status">
+                  {promo && !quoting ? (promoError || (promoOk ? `${price.promo.percent}% off applied` : '')) : ''}
+                </small>
+              </label>
               <div className="perk"><ShieldCheck size={16} /> Free cancellation until 48 hours before check-in</div>
             </div>
           </aside>

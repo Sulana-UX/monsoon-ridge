@@ -22,6 +22,11 @@ import BookingDetails from './pages/admin/BookingDetails'
 import Calendar from './pages/admin/Calendar'
 import NewBooking from './pages/admin/NewBooking'
 import Blocks from './pages/admin/Blocks'
+import Pricing from './pages/admin/Pricing'
+import Reports from './pages/admin/Reports'
+import Inbox from './pages/admin/Inbox'
+import Staff from './pages/admin/Staff'
+import Activity from './pages/admin/Activity'
 import RequireAuth from './components/RequireAuth'
 
 function ScrollToTop() {
@@ -58,6 +63,11 @@ export default function App() {
             <Route path="bookings/new" element={<NewBooking />} />
             <Route path="bookings/:ref" element={<BookingDetails />} />
             <Route path="blocks" element={<Blocks />} />
+            <Route path="pricing" element={<Pricing />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="inbox" element={<Inbox />} />
+            <Route path="staff" element={<Staff />} />
+            <Route path="activity" element={<Activity />} />
             <Route path="calendar" element={<Calendar />} />
             <Route path="guests" element={<Guests />} />
             <Route path="rooms" element={<RoomsAdmin />} />

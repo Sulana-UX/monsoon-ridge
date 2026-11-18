@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { Link, useOutletContext, useParams } from 'react-router-dom'
 import {
   ChevronLeft, Printer, Mail, Phone, Globe, Clock, Users, CalendarDays, BedDouble, CreditCard,
-  MessageSquare, StickyNote, Trash2, Send, CheckCircle2, XCircle, LogIn, LogOut, UserX, PlusCircle,
+  MessageSquare, StickyNote, Trash2, Send, CheckCircle2, XCircle, LogIn, LogOut, UserX, PlusCircle, MailCheck, MailWarning, History,
 } from 'lucide-react'
-import { useBookingNotes } from '../../lib/bookings'
+import { useActivityFor, useBookingNotes } from '../../lib/bookings'
 import { api, friendlyError } from '../../lib/firebase'
 import { statusClass, statusLabel, guestName } from '../../lib/status'
-import { formatLKR, prettyDate } from '../../utils'
+import { prettyDate } from '../../utils'
 import { Person } from './Avatar'
+import PriceLines from '../../components/PriceLines'
 import FrontDeskButtons from './FrontDesk'
 
 const when = (d) => (d ? d.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '')
@@ -17,6 +18,8 @@ export default function BookingDetails() {
   const { ref } = useParams()
   const { bookings } = useOutletContext()
   const b = bookings.find((x) => x.ref === ref)
+  const [mailBusy, setMailBusy] = useState(false)
+  const [mailMsg, setMailMsg] = useState(null)
 
   if (!b) {
     return (
@@ -40,7 +43,24 @@ export default function BookingDetails() {
     b.checkedOutAt && { icon: LogOut, label: b.checkOutActual && b.checkOutActual < b.checkOut ? `Checked out early (${prettyDate(b.checkOutActual)})` : 'Checked out', at: b.checkedOutAt },
     b.noShowAt && { icon: UserX, label: 'Marked as no-show', at: b.noShowAt },
     b.cancelledAt && { icon: XCircle, label: `Cancelled by ${b.cancelledBy || 'guest'}`, at: b.cancelledAt },
+    ...['confirmation', 'cancellation'].map((k) => {
+      const e = b.emails?.[k]
+      if (!e || e.status === 'skipped') return null
+      return { icon: e.status === 'sent' ? MailCheck : MailWarning, label: `${k === 'confirmation' ? 'Confirmation' : 'Cancellation'} email ${e.status === 'sent' ? 'sent' : 'failed'}`, at: e.at?.toDate?.() ?? e.at, by: e.status === 'sent' ? b.guest?.email : e.error }
+    }),
   ].filter(Boolean).sort((x, y) => (x.at?.getTime?.() ?? 0) - (y.at?.getTime?.() ?? 0))
+
+  const resend = async () => {
+    setMailBusy(true)
+    setMailMsg(null)
+    try {
+      await api.resendConfirmation(b.ref)
+      setMailMsg({ ok: true, text: `Confirmation sent to ${b.guest.email}.` })
+    } catch (e) {
+      setMailMsg({ ok: false, text: friendlyError(e) })
+    }
+    setMailBusy(false)
+  }
 
   const cancel = async () => {
     if (!window.confirm(`Cancel ${b.ref} for ${guestName(b)}? The guest will see it as cancelled by the hotel.`)) return
@@ -108,12 +128,7 @@ export default function BookingDetails() {
 
         <section className="admin-card admin-card--7">
           <h3 className="bd-title">Price</h3>
-          <div className="price-lines bd-price">
-            <div><span>{formatLKR(p.rate)} × {p.nights} night{p.nights === 1 ? '' : 's'}</span><span>{formatLKR(p.subtotal)}</span></div>
-            <div><span>Service charge (10%)</span><span>{formatLKR(p.service)}</span></div>
-            <div><span>Taxes (8%)</span><span>{formatLKR(p.tax)}</span></div>
-            <div className="total"><span>Total</span><span>{formatLKR(p.total)}</span></div>
-          </div>
+          <PriceLines price={p} className="price-lines bd-price" />
           <p className="muted small">Price locked at the time of booking.</p>
         </section>
 
@@ -128,11 +143,48 @@ export default function BookingDetails() {
             ))}
             {b.statusBy && <li className="bd-by"><CheckCircle2 size={14} /> Last front-desk change by {b.statusBy}</li>}
           </ol>
+          {b.guest?.email && b.status !== 'Cancelled' && (
+            <div className="bd-mail no-print">
+              <button className="btn btn-outline btn-sm" onClick={resend} disabled={mailBusy}>
+                {mailBusy ? <span className="spinner spinner--sm" /> : <Mail size={15} />} {b.emails?.confirmation?.status === 'sent' ? 'Resend confirmation email' : 'Send confirmation email'}
+              </button>
+              {mailMsg && <p className={`auth-msg ${mailMsg.ok ? '' : 'auth-msg--err'}`} role="status">{mailMsg.text}</p>}
+            </div>
+          )}
         </section>
 
+        <BookingActivity refId={b.ref} />
         <Notes refId={b.ref} />
       </div>
     </div>
+  )
+}
+
+/** Everything the activity log recorded for this booking (who cancelled, checked in, …). */
+function BookingActivity({ refId }) {
+  const { entries, error } = useActivityFor(refId)
+  if (error || entries.length === 0) return null
+  return (
+    <section className="admin-card admin-card--wide no-print">
+      <div className="admin-card-head">
+        <div>
+          <h3><History size={18} /> Activity</h3>
+          <p className="muted small">From the activity log. Can't be edited.</p>
+        </div>
+        <Link to="/admin/activity" className="link-arrow">Full log</Link>
+      </div>
+      <ol className="activity-list activity-list--compact">
+        {entries.map((e) => (
+          <li key={e.id} className="activity-row">
+            <div className="activity-main">
+              <p>{e.summary}</p>
+              <small>{e.role === 'guest' ? 'Guest' : 'Staff'} · {e.by}</small>
+            </div>
+            <time>{when(e.at)}</time>
+          </li>
+        ))}
+      </ol>
+    </section>
   )
 }
 
