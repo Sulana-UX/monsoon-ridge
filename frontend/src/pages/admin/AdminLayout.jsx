@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, CalendarDays, Users, LogOut } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, Users, LogOut, BedDouble } from 'lucide-react'
+import { useAllRooms } from '../../context/RoomsContext'
 import Logo from '../../components/Logo'
 import { useBookings } from '../../lib/bookings'
 import { useAuth } from '../../context/AuthContext'
@@ -7,6 +8,7 @@ import { useAuth } from '../../context/AuthContext'
 const NAV = [
   { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/admin/bookings', label: 'Bookings', icon: CalendarDays },
+  { to: '/admin/rooms', label: 'Rooms', icon: BedDouble },
   { to: '/admin/guests', label: 'Guests', icon: Users },
 ]
 
@@ -18,7 +20,14 @@ export default function AdminLayout() {
     navigate('/', { replace: true })
   }
   // One live subscription shared by every tab
-  const data = useBookings({ all: true, max: 1000 })
+  const bookingsState = useBookings({ all: true, max: 1000 })
+  const roomsState = useAllRooms()
+  const data = {
+    bookings: bookingsState.bookings,
+    rooms: roomsState.rooms,
+    loading: bookingsState.loading || roomsState.loading,
+    error: bookingsState.error || roomsState.error,
+  }
 
   return (
     <section className="admin-page">

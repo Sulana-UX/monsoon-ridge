@@ -7,19 +7,20 @@ import {
 import Amenity from '../components/Amenity'
 import RoomCard from '../components/RoomCard'
 import Reveal from '../components/Reveal'
-import { rooms } from '../data/rooms'
+import { useRooms } from '../context/RoomsContext'
 import { useBooking } from '../context/BookingContext'
 import { addDays, formatLKR, nightsBetween, priceBreakdown, today } from '../utils'
 import NotFound from './NotFound'
 
 export default function RoomDetails() {
   const { id } = useParams()
+  const { rooms, loading } = useRooms()
   const room = rooms.find((r) => r.id === id)
   const { search, setSearch } = useBooking()
   const [active, setActive] = useState(0)
   const navigate = useNavigate()
 
-  if (!room) return <NotFound />
+  if (!room) return loading ? <div className="page-loading"><span className="spinner" /></div> : <NotFound />
 
   const nights = nightsBetween(search.checkIn, search.checkOut)
   const price = priceBreakdown(room.price, nights)
@@ -48,10 +49,14 @@ export default function RoomDetails() {
               <span className="badge badge--static">{room.type}</span>
               <h1>{room.name}</h1>
               <div className="detail-sub">
-                <span className="rating"><Star size={15} fill="currentColor" /> {room.rating.toFixed(1)}</span>
-                <span className="muted">({room.reviews} reviews)</span>
+                {room.rating ? (
+                  <>
+                    <span className="rating"><Star size={15} fill="currentColor" /> {room.rating.toFixed(1)}</span>
+                    <span className="muted">({room.reviews} reviews)</span>
+                  </>
+                ) : <span className="badge badge--static badge--new">New</span>}
                 <span className="dot" />
-                <span className="muted">{room.view}</span>
+                {room.view && <span className="muted">{room.view}</span>}
               </div>
             </div>
             <div className="detail-price">

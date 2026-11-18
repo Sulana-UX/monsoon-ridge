@@ -1,3 +1,5 @@
+// Starter content. Rooms are managed in the admin dashboard (Firestore `rooms`);
+// this `rooms` list is only used once by backend/server/scripts/seed-rooms.js.
 const u = (id, w = 1200) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=80`
 
 export const rooms = [

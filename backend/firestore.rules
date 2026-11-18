@@ -16,6 +16,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Rooms: anyone can read rooms shown on the website; staff can read hidden ones too.
+    // Changes only through the API (admin endpoints).
+    match /rooms/{id} {
+      allow get, list: if resource.data.active == true || isAdmin();
+      allow write: if false;
+    }
+
     // Per-night room counts: server only.
     match /inventory/{id} {
       allow read, write: if false;

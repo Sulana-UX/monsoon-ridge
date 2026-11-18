@@ -79,3 +79,58 @@ test('date helpers', () => {
 test('server pricing', () => {
   assert.deepEqual(priceFor(18500, 2), { rate: 18500, nights: 2, subtotal: 37000, service: 3700, tax: 2960, total: 43660 })
 })
+
+/* ---------- rooms (admin form) ---------- */
+import { parseRoomInput, slugify } from '../src/rooms.js'
+
+const room = () => ({
+  name: 'Garden Double', type: 'Double', price: 18500, guests: 2, units: 4, size: 30,
+  beds: '1 King Bed', view: 'Garden', short: 'A calm room by the garden.',
+  description: 'A calm room by the garden with warm timber floors.',
+  amenities: ['wifi', 'ac'], gallery: ['https://images.unsplash.com/photo-1'], featured: true, active: true,
+})
+
+test('accepts a valid room and sets the main image', () => {
+  const r = parseRoomInput(room())
+  assert.equal(r.image, r.gallery[0])
+  assert.equal(r.type, 'Double')
+})
+
+test('room form: numbers from inputs are accepted, unknown fields dropped', () => {
+  const r = parseRoomInput({ ...room(), price: '20000', rating: 5, id: 'hack' })
+  assert.equal(r.price, 20000)
+  assert.equal('rating' in r, false)
+  assert.equal('id' in r, false)
+})
+
+test('room form rejects bad input', () => {
+  const no = (patch, re) => assert.throws(() => parseRoomInput({ ...room(), ...patch }), (e) => e.code === 'invalid-argument' && re.test(e.message))
+  no({ type: 'Suite' }, /Category/)
+  no({ price: 50 }, /Price/)
+  no({ price: 1234.5 }, /Price/)
+  no({ guests: 0 }, /guests/)
+  no({ amenities: ['jacuzzi'] }, /amenity/)
+  no({ gallery: [] }, /photo/)
+  no({ gallery: ['http://insecure.com/a.jpg'] }, /https/)
+  no({ gallery: ['javascript:alert(1)'] }, /https|link/)
+  no({ name: 'x' }, /name/)
+})
+
+test('slugify makes safe ids', () => {
+  assert.equal(slugify('Deluxe Family Room!'), 'deluxe-family-room')
+  assert.equal(slugify('  ../../etc  '), 'etc')
+})
+
+/* ---------- Cloudinary signing ---------- */
+import { createHash } from 'node:crypto'
+import { signRoomUpload } from '../src/uploads.js'
+
+test('upload signature matches Cloudinary’s algorithm and never returns the secret', () => {
+  Object.assign(process.env, { CLOUDINARY_CLOUD_NAME: 'demo', CLOUDINARY_API_KEY: '123', CLOUDINARY_API_SECRET: 'shh' })
+  const s = signRoomUpload()
+  const expected = createHash('sha1').update(`allowed_formats=${s.allowed_formats}&folder=${s.folder}&timestamp=${s.timestamp}shh`).digest('hex')
+  assert.equal(s.signature, expected)
+  assert.equal(JSON.stringify(s).includes('shh'), false)
+  delete process.env.CLOUDINARY_API_SECRET
+  assert.throws(() => signRoomUpload(), /not set up/)
+})

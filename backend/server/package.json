@@ -10,7 +10,8 @@
     "start": "node src/index.js",
     "dev": "node --env-file=.env --watch src/index.js",
     "test": "node --test test/*.test.js",
-    "sync-admins": "node --env-file=.env scripts/sync-admins.js"
+    "sync-admins": "node --env-file=.env scripts/sync-admins.js",
+    "seed-rooms": "node --env-file=.env scripts/seed-rooms.js"
   },
   "dependencies": {
     "cors": "^2.8.6",

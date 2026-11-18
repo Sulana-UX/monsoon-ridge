@@ -32,8 +32,8 @@ class ApiError extends Error {
   }
 }
 
-/** POST to our Express API with the signed-in user's Firebase ID token. */
-async function call(path, body) {
+/** Calls our Express API with the signed-in user's Firebase ID token. */
+async function call(path, body, method = 'POST') {
   const user = auth.currentUser
   if (!user) throw new ApiError('api/unauthenticated', 'Please sign in first.')
   const token = await user.getIdToken()
@@ -41,9 +41,9 @@ async function call(path, body) {
   let res
   try {
     res = await fetch(API_URL + path, {
-      method: 'POST',
+      method,
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body ?? {}),
+      body: method === 'DELETE' ? undefined : JSON.stringify(body ?? {}),
     })
   } catch {
     throw new ApiError('api/unavailable', 'Could not reach the booking server. Please try again in a moment.')
@@ -59,6 +59,11 @@ export const api = {
   createBooking: (booking) => call('/api/bookings', booking),
   cancelBooking: ({ ref }) => call(`/api/bookings/${encodeURIComponent(ref)}/cancel`),
   syncAdminClaim: () => call('/api/me/sync-admin'),
+  // staff only (the server checks the admin role)
+  createRoom: (room) => call('/api/admin/rooms', room),
+  updateRoom: (id, room) => call(`/api/admin/rooms/${encodeURIComponent(id)}`, room, 'PUT'),
+  deleteRoom: (id) => call(`/api/admin/rooms/${encodeURIComponent(id)}`, null, 'DELETE'),
+  signUpload: () => call('/api/admin/uploads/sign'),
   // The free server sleeps when idle; ping it early so it's awake by the time a guest books
   wake: () => fetch(API_URL + '/health').catch(() => {}),
 }

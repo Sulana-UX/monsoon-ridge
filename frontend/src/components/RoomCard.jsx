@@ -27,7 +27,7 @@ export default function RoomCard({ room }) {
         <div className="room-card-top">
           <h3>{room.name}</h3>
           <span className="rating">
-            <Star size={14} fill="currentColor" /> {room.rating.toFixed(1)}
+            {room.rating ? <><Star size={14} fill="currentColor" /> {room.rating.toFixed(1)}</> : 'New'}
           </span>
         </div>
         <p className="muted">{room.short}</p>

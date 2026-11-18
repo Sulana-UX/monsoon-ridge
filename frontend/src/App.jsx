@@ -16,6 +16,8 @@ import AdminLayout from './pages/admin/AdminLayout'
 import Overview from './pages/admin/Overview'
 import AdminBookings from './pages/admin/Bookings'
 import Guests from './pages/admin/Guests'
+import RoomsAdmin from './pages/admin/RoomsAdmin'
+import RoomEditor from './pages/admin/RoomEditor'
 import RequireAuth from './components/RequireAuth'
 
 function ScrollToTop() {
@@ -50,6 +52,9 @@ export default function App() {
             <Route index element={<Overview />} />
             <Route path="bookings" element={<AdminBookings />} />
             <Route path="guests" element={<Guests />} />
+            <Route path="rooms" element={<RoomsAdmin />} />
+            <Route path="rooms/new" element={<RoomEditor />} />
+            <Route path="rooms/:id" element={<RoomEditor />} />
           </Route>
           <Route path="/login" element={<Login mode="login" />} />
           <Route path="/register" element={<Login mode="register" />} />

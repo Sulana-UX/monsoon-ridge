@@ -18,5 +18,11 @@ services:
         sync: false # entered in the dashboard
       - key: ALLOWED_ORIGINS
         value: https://monsoon-ridge.web.app,https://monsoon-ridge.firebaseapp.com
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false # secret
       - key: FIREBASE_SERVICE_ACCOUNT
         sync: false # secret: paste the service-account JSON in the dashboard

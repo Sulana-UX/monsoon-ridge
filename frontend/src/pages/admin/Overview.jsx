@@ -1,11 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
 import { CalendarDays, Wallet, BedDouble, XCircle, LogIn, LogOut, ArrowRight } from 'lucide-react'
-import { rooms } from '../../data/rooms'
 import { addDays, formatLKR, prettyDate, today } from '../../utils'
 import { ColumnChart, BarList, DataTable } from './BarChart'
 
-const TOTAL_UNITS = rooms.reduce((s, r) => s + (r.units || 0), 0)
 const PERIODS = [
   { key: 7, label: 'Last 7 days' },
   { key: 30, label: 'Last 30 days' },
@@ -16,7 +14,8 @@ const dayLabel = (iso) => new Date(iso + 'T00:00:00').toLocaleDateString('en-GB'
 const guestName = (b) => `${b.guest?.firstName ?? ''} ${b.guest?.lastName ?? ''}`.trim()
 
 export default function Overview() {
-  const { bookings } = useOutletContext()
+  const { bookings, rooms } = useOutletContext()
+  const TOTAL_UNITS = rooms.filter((r) => r.active !== false).reduce((s, r) => s + (r.units || 0), 0)
   const [period, setPeriod] = useState(30)
   const t = today()
   const live = useMemo(() => bookings.filter((b) => b.status === 'Confirmed'), [bookings])
@@ -46,7 +45,7 @@ export default function Overview() {
         tip: { title: prettyDate(d), lines: [`${booked} of ${TOTAL_UNITS} rooms booked`, `${pct}% occupancy`] },
       }
     })
-  }, [live, t])
+  }, [live, t, TOTAL_UNITS])
 
   // Revenue by room type (confirmed, all time)
   const byRoom = useMemo(() => {
@@ -60,7 +59,7 @@ export default function Overview() {
         }
       })
       .sort((a, b) => b.value - a.value)
-  }, [live])
+  }, [live, rooms])
 
   const arrivals = live.filter((b) => b.checkIn === t)
   const departures = live.filter((b) => b.checkOut === t)

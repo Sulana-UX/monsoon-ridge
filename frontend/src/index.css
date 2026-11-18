@@ -909,3 +909,79 @@ button.admin-nav { background: none; border: none; color: inherit; font: inherit
   .admin-logo { padding: 4px 6px 0; }
   button.admin-nav { width: auto; }
 }
+
+/* ============ ADMIN: ROOMS ============ */
+.chip-count { display: inline-block; margin-left: 4px; font-size: .75rem; opacity: .65; }
+.badge--new { background: var(--gold-soft); color: var(--gold-2); }
+.room-admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+.room-admin { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; transition: transform .2s, box-shadow .2s; color: inherit; }
+.room-admin:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.room-admin.is-hidden { opacity: .6; }
+.room-admin-img { position: relative; height: 160px; background: var(--cream) center / cover no-repeat; }
+.room-admin-img .badge { top: 12px; left: 12px; }
+.room-admin-hidden, .room-admin-featured { position: absolute; right: 10px; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+.room-admin-hidden { top: 12px; background: rgba(15,42,46,.85); color: #fff; }
+.room-admin-featured { bottom: 10px; background: #fff; color: var(--gold-2); }
+.room-admin-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.room-admin-body h3 { font-size: 1.05rem; margin: 0; }
+.room-admin-meta { display: flex; gap: 14px; color: var(--muted); font-size: .85rem; }
+.room-admin-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.room-admin-foot { display: flex; justify-content: space-between; align-items: center; }
+.room-admin-foot small { font-weight: 400; color: var(--muted); font-size: .8rem; }
+.room-admin-foot .text-btn { display: inline-flex; align-items: center; gap: 4px; font-size: .88rem; }
+
+.room-editor .back-link { margin-bottom: 10px; }
+.editor-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.editor-main, .editor-side { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.editor-side { position: sticky; top: 24px; }
+.room-editor .admin-card h3 { font-size: 1.05rem; margin: 0 0 14px; }
+.room-editor .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.room-editor .field { grid-column: span 2; }
+.room-editor .field--half { grid-column: span 1; }
+.room-editor .editor-side .form-grid { grid-template-columns: 1fr; }
+.room-editor .editor-side .field { grid-column: span 1; }
+.room-editor input, .room-editor select, .room-editor textarea { flex: 1; border: none; outline: none; padding: 12px 0; font: inherit; background: transparent; min-width: 0; resize: vertical; }
+.photo-list { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 14px; }
+.photo-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; }
+.photo-thumb { width: 64px; height: 46px; border-radius: 8px; object-fit: cover; background: var(--cream); }
+.photo-thumb--empty { display: grid; place-items: center; color: var(--muted); }
+.photo-main { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--gold-2); padding: 0 6px; }
+.icon-btn { width: 34px; height: 34px; border-radius: 8px; border: 1.5px solid var(--line); background: #fff; display: grid; place-items: center; color: var(--ink); cursor: pointer; }
+.icon-btn:hover { border-color: var(--ink); }
+.amenity-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.amenity-opt { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; font-size: .88rem; cursor: pointer; transition: all .15s; }
+.amenity-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.amenity-opt svg { color: var(--muted); }
+.amenity-opt.is-on { border-color: var(--gold); background: var(--gold-soft); }
+.amenity-opt.is-on svg { color: var(--gold-2); }
+.amenity-opt:focus-within { box-shadow: 0 0 0 3px rgba(212,168,87,.3); }
+.switch-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; cursor: pointer; }
+.switch-row + .switch-row { border-top: 1px solid var(--line); }
+.switch-row input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--gold-2); flex-shrink: 0; }
+.switch-row span { display: flex; flex-direction: column; font-size: .92rem; }
+.switch-row small { color: var(--muted); font-size: .8rem; }
+.btn-danger-outline { background: #fff; color: var(--bad); border: 1.5px solid #f0caca; }
+.btn-danger-outline:hover { background: #fbeaea; }
+@media (max-width: 1080px) {
+  .editor-grid { grid-template-columns: minmax(0, 1fr); }
+  .editor-side { position: static; }
+}
+@media (max-width: 640px) {
+  .room-editor .form-grid { grid-template-columns: 1fr; }
+  .room-editor .field, .room-editor .field--half { grid-column: span 1; }
+  .photo-row { grid-template-columns: 52px minmax(0, 1fr) auto; }
+  .photo-row .photo-main { display: none; }
+}
+.room-editor input[type='checkbox'] { flex: none; padding: 0; border: revert; width: 18px; height: 18px; }
+
+/* Cloudinary upload */
+.upload-zone { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 22px; margin: 12px 0 4px; border: 2px dashed var(--line); border-radius: 14px; background: var(--cream); color: var(--ink); text-align: center; cursor: pointer; transition: all .15s; }
+.upload-zone:hover, .upload-zone.is-drag { border-color: var(--gold); background: var(--gold-soft); }
+.upload-zone:focus-within { box-shadow: 0 0 0 3px rgba(212,168,87,.3); }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.upload-zone svg { color: var(--gold-2); }
+.upload-zone small { color: var(--muted); font-size: .8rem; }
+.upload-zone.is-busy { cursor: progress; flex-direction: column; }
+.upload-zone .spinner { width: 24px; height: 24px; }
+.upload-bar { display: block; width: min(320px, 90%); height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.upload-bar span { display: block; height: 100%; background: var(--gold-2); transition: width .2s; }

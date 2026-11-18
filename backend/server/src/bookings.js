@@ -8,7 +8,7 @@ import { randomInt } from 'node:crypto'
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { auth as adminAuth, db } from './firebase.js'
 import { ApiError } from './errors.js'
-import { ROOMS, priceFor } from './rooms.js'
+import { priceFor } from './rooms.js'
 import { parseBookingRequest, parseRef, nightsOf, hotelToday } from './validate.js'
 
 const RATE_WINDOW_MS = 10 * 60 * 1000
@@ -24,10 +24,6 @@ const list = (v) => (v || '').split(',').map((s) => s.trim().toLowerCase()).filt
 export async function createBooking(user, body) {
   const req = parseBookingRequest(body)
 
-  const room = ROOMS[req.roomId]
-  if (!room) throw new ApiError('invalid-argument', 'Unknown room.')
-  if (req.guests > room.guests) throw new ApiError('invalid-argument', `${room.name} sleeps up to ${room.guests} guests.`)
-
   // Per-account limits (outside the transaction; they only need to be roughly right)
   const mine = db.collection('bookings').where('uid', '==', user.uid)
   const recent = await mine.where('createdAt', '>=', Timestamp.fromMillis(Date.now() - RATE_WINDOW_MS)).count().get()
@@ -40,11 +36,17 @@ export async function createBooking(user, body) {
     throw new ApiError('resource-exhausted', 'You have reached the limit of upcoming bookings. Please contact the hotel.')
   }
 
-  const price = priceFor(room.price, req.nights)
   const nights = nightsOf(req.checkIn, req.nights)
 
   return db.runTransaction(async (tx) => {
-    // reads first
+    // reads first. The room is read inside the transaction, so a price or
+    // room-count change by staff can't race with this booking.
+    const roomSnap = await tx.get(db.collection('rooms').doc(req.roomId))
+    const room = roomSnap.exists ? roomSnap.data() : null
+    if (!room || room.active === false) throw new ApiError('invalid-argument', 'This room is not available for booking.')
+    if (req.guests > room.guests) throw new ApiError('invalid-argument', `${room.name} sleeps up to ${room.guests} guests.`)
+    const price = priceFor(room.price, req.nights)
+
     let ref = newRef()
     for (let i = 0; i < 5 && (await tx.get(db.collection('bookings').doc(ref))).exists; i++) ref = newRef()
 

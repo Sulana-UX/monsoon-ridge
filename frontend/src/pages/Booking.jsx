@@ -4,7 +4,7 @@ import {
   User, Mail, Phone, Globe, Clock, MessageSquare, CreditCard, Building, Lock,
   Check, CalendarDays, Users, ChevronLeft, ShieldCheck,
 } from 'lucide-react'
-import { rooms } from '../data/rooms'
+import { useRooms } from '../context/RoomsContext'
 import { useBooking } from '../context/BookingContext'
 import { useAuth } from '../context/AuthContext'
 import { api, friendlyError } from '../lib/firebase'
@@ -15,6 +15,7 @@ const steps = ['Choose Room', 'Guest Details', 'Confirmation']
 
 export default function Booking() {
   const { id } = useParams()
+  const { rooms, loading: roomsLoading } = useRooms()
   const room = rooms.find((r) => r.id === id)
   const { search } = useBooking()
   const { user } = useAuth()
@@ -32,7 +33,7 @@ export default function Booking() {
   // The free API server sleeps when idle: wake it while the guest fills in the form
   useEffect(() => { api.wake() }, [])
 
-  if (!room) return <NotFound />
+  if (!room) return roomsLoading ? <div className="page-loading"><span className="spinner" /></div> : <NotFound />
 
   const nights = nightsBetween(search.checkIn, search.checkOut)
   const price = priceBreakdown(room.price, nights)

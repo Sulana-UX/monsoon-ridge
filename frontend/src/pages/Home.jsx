@@ -9,7 +9,8 @@ import NightScene from '../components/NightScene'
 import RoomCard from '../components/RoomCard'
 import Reveal from '../components/Reveal'
 import ScrollGallery from '../components/ScrollGallery'
-import { rooms, images, testimonials, galleryItems } from '../data/rooms'
+import { images, testimonials, galleryItems } from '../data/rooms'
+import { useRooms } from '../context/RoomsContext'
 
 const facilities = [
   { icon: UtensilsCrossed, title: 'Riverside Dining', text: 'Authentic Sri Lankan and international cuisine served on the water’s edge.' },
@@ -28,6 +29,7 @@ const stats = [
 ]
 
 export default function Home() {
+  const { rooms } = useRooms()
   const featured = rooms.filter((r) => r.featured)
   const [night, setNight] = useState(false)
   const [ready, setReady] = useState(false)

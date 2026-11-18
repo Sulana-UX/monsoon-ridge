@@ -5,6 +5,9 @@ import rateLimit from 'express-rate-limit'
 import { auth } from './firebase.js'
 import { ApiError } from './errors.js'
 import { createBooking, cancelBooking, syncAdminClaim } from './bookings.js'
+import { createRoom, updateRoom, deleteRoom } from './rooms.js'
+import { signRoomUpload } from './uploads.js'
+import { db } from './firebase.js'
 
 const origins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',').map((s) => s.trim()).filter(Boolean)
 
@@ -15,7 +18,7 @@ app.set('trust proxy', 1) // Render sits behind one proxy; needed for per-IP rat
 app.use(helmet()) // security headers (no sniffing, no framing, HSTS, …)
 app.use(cors({
   origin: (origin, cb) => cb(null, !origin || origins.includes(origin)), // only our own website
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Authorization', 'Content-Type'],
   maxAge: 600,
 }))
@@ -42,6 +45,11 @@ async function requireUser(req, _res, next) {
   }
 }
 
+/** Staff only: the `admin` claim is set by the server (syncAdminClaim), never by the browser. */
+function requireAdmin(req, _res, next) {
+  next(req.user?.admin === true ? undefined : new ApiError('permission-denied', 'Staff access only.'))
+}
+
 const handle = (fn) => async (req, res, next) => {
   try {
     res.json(await fn(req))
@@ -56,6 +64,12 @@ app.get('/health', (_req, res) => res.json({ ok: true }))
 app.post('/api/bookings', writeLimit, requireUser, handle((req) => createBooking(req.user, req.body)))
 app.post('/api/bookings/:ref/cancel', writeLimit, requireUser, handle((req) => cancelBooking(req.user, req.params.ref)))
 app.post('/api/me/sync-admin', requireUser, handle((req) => syncAdminClaim(req.user)))
+
+// Room management (staff)
+app.post('/api/admin/rooms', writeLimit, requireUser, requireAdmin, handle((req) => createRoom(db, req.body)))
+app.put('/api/admin/rooms/:id', writeLimit, requireUser, requireAdmin, handle((req) => updateRoom(db, req.params.id, req.body)))
+app.delete('/api/admin/rooms/:id', writeLimit, requireUser, requireAdmin, handle((req) => deleteRoom(db, req.params.id)))
+app.post('/api/admin/uploads/sign', requireUser, requireAdmin, handle(() => signRoomUpload()))
 
 app.use((_req, _res, next) => next(new ApiError('not-found', 'Not found.')))
 

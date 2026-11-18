@@ -69,6 +69,11 @@ The free Render server sleeps after about 15 minutes idle; the first request aft
 2. Sign in on the site with that email and verify it.
 3. Refresh the page. **Admin** appears in the user menu and opens the dashboard at `/admin`.
 
-## Changing rooms or prices
+## Rooms and prices
 
-Edit **both** `frontend/src/data/rooms.js` (what guests see) and `backend/server/src/rooms.js` (what they pay, and `units` = rooms of that type).
+Staff manage rooms in the dashboard (**Admin → Rooms**): add rooms, edit details and photos, change prices and room counts, hide rooms, or feature them on the home page. Categories are **Single**, **Double** and **Family**.
+
+- Rooms are stored in Firestore (`rooms`). The website updates live, and the server reads price and room count from there for every booking.
+- A price change applies to new bookings only. Existing bookings keep the price they were booked at.
+- A room that has bookings can't be deleted. Hide it instead (turn off "Show on website").
+- Starter rooms: `npm run seed-rooms` (in `backend/server`) copies `frontend/src/data/rooms.js` into Firestore once. Rooms that already exist are skipped.

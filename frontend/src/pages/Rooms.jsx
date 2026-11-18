@@ -4,32 +4,34 @@ import PageHeader from '../components/PageHeader'
 import SearchBar from '../components/SearchBar'
 import RoomCard from '../components/RoomCard'
 import Reveal from '../components/Reveal'
-import { rooms, roomTypes, images } from '../data/rooms'
+import { images } from '../data/rooms'
+import { useRooms, CATEGORIES } from '../context/RoomsContext'
 import { useBooking } from '../context/BookingContext'
 import { formatLKR } from '../utils'
 
-const MAX_PRICE = Math.max(...rooms.map((r) => r.price))
-
 export default function Rooms() {
   const { search } = useBooking()
+  const { rooms, loading, error } = useRooms()
+  const MAX_PRICE = useMemo(() => Math.max(10000, ...rooms.map((r) => r.price)), [rooms])
   const [type, setType] = useState('All')
-  const [maxPrice, setMaxPrice] = useState(MAX_PRICE)
+  const [maxPrice, setMaxPrice] = useState(Infinity)
+  const priceCap = Math.min(maxPrice, MAX_PRICE)
   const [sort, setSort] = useState('recommended')
   const [showFilters, setShowFilters] = useState(false)
 
   const list = useMemo(() => {
     let r = rooms.filter(
-      (x) => (type === 'All' || x.type === type) && x.price <= maxPrice && x.guests >= search.guests
+      (x) => (type === 'All' || x.type === type) && x.price <= priceCap && x.guests >= search.guests
     )
     if (sort === 'price-asc') r = [...r].sort((a, b) => a.price - b.price)
     if (sort === 'price-desc') r = [...r].sort((a, b) => b.price - a.price)
-    if (sort === 'rating') r = [...r].sort((a, b) => b.rating - a.rating)
+    if (sort === 'rating') r = [...r].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
     return r
-  }, [type, maxPrice, sort, search.guests])
+  }, [rooms, type, priceCap, sort, search.guests])
 
   const reset = () => {
     setType('All')
-    setMaxPrice(MAX_PRICE)
+    setMaxPrice(Infinity)
     setSort('recommended')
   }
 
@@ -56,7 +58,7 @@ export default function Rooms() {
             <div className="filter-group">
               <h4>Room Type</h4>
               <div className="chips">
-                {roomTypes.map((t) => (
+                {['All', ...CATEGORIES].map((t) => (
                   <button
                     key={t}
                     className={`chip ${type === t ? 'is-active' : ''}`}
@@ -75,12 +77,12 @@ export default function Rooms() {
                 min={10000}
                 max={MAX_PRICE}
                 step={500}
-                value={maxPrice}
+                value={priceCap}
                 onChange={(e) => setMaxPrice(Number(e.target.value))}
               />
               <div className="range-labels">
                 <span>{formatLKR(10000)}</span>
-                <strong>{formatLKR(maxPrice)}</strong>
+                <strong>{formatLKR(priceCap)}</strong>
               </div>
             </div>
 
@@ -106,7 +108,15 @@ export default function Rooms() {
               </div>
             </div>
 
-            {list.length ? (
+            {loading ? (
+              <div className="page-loading"><span className="spinner" /></div>
+            ) : error ? (
+              <div className="empty">
+                <SearchX size={42} />
+                <h3>Couldn't load rooms</h3>
+                <p className="muted">Please check your connection and refresh the page.</p>
+              </div>
+            ) : list.length ? (
               <div className="room-grid room-grid--two">
                 {list.map((r, i) => (
                   <Reveal key={r.id} variant="left" delay={(i % 2) * 160}>
