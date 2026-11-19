@@ -133,3 +133,17 @@ export function useActivityFor(targetId) {
   ), [targetId])
   return state
 }
+
+/** Staff: room numbers with housekeeping status, sorted naturally (101, 102, …, V1). */
+export function useUnits() {
+  const [state, setState] = useState({ units: [], loading: true, error: null })
+  useEffect(() => onSnapshot(
+    collection(db, 'roomUnits'),
+    (snap) => setState({
+      units: snap.docs.map(fromSnap).sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true })),
+      loading: false, error: null,
+    }),
+    (error) => setState({ units: [], loading: false, error }),
+  ), [])
+  return state
+}

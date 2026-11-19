@@ -8,15 +8,17 @@ import { api, friendlyError } from '../lib/firebase'
 import { images } from '../data/rooms'
 import { formatLKR, prettyDate, today } from '../utils'
 import { isLive, statusClass, statusLabel } from '../lib/status'
+import { useDialog } from '../components/Dialog'
 
 export default function MyBookings() {
+  const dialog = useDialog()
   const { user } = useAuth()
   const { bookings, loading, error } = useBookings({ uid: user.uid })
   const [busyRef, setBusyRef] = useState(null)
   const [cancelError, setCancelError] = useState('')
 
   const cancelBooking = async (b) => {
-    if (!window.confirm(`Cancel your ${b.roomName} booking (${b.ref})? This cannot be undone.`)) return
+    if (!(await dialog.confirm({ title: 'Cancel this booking?', message: `${b.roomName}, reference ${b.ref}. This cannot be undone.`, confirmLabel: 'Cancel booking', cancelLabel: 'Keep booking', danger: true }))) return
     setBusyRef(b.ref)
     setCancelError('')
     try {

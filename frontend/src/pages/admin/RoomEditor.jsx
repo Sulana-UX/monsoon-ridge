@@ -6,6 +6,7 @@ import { CATEGORIES } from '../../context/RoomsContext'
 import { AMENITIES } from '../../components/Amenity'
 import { api, friendlyError } from '../../lib/firebase'
 import { formatLKR, priceBreakdown } from '../../utils'
+import { useDialog } from '../../components/Dialog'
 
 const EMPTY = {
   name: '', type: 'Double', price: '', guests: 2, units: 1, size: '', beds: '', view: '',
@@ -36,6 +37,7 @@ export default function RoomEditorRoute() {
 }
 
 function RoomEditor({ id }) {
+  const dialog = useDialog()
   const isNew = !id
   const { rooms } = useOutletContext()
   const existing = rooms.find((r) => r.id === id)
@@ -128,7 +130,7 @@ function RoomEditor({ id }) {
   }
 
   const remove = async () => {
-    if (!window.confirm(`Delete "${existing.name}" permanently? This cannot be undone.`)) return
+    if (!(await dialog.confirm({ title: `Delete ${existing.name}?`, message: 'The room type is removed permanently. This cannot be undone.', confirmLabel: 'Delete room', danger: true }))) return
     setBusy(true)
     setMsg(null)
     try {

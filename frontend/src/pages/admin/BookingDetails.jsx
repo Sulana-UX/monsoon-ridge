@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useOutletContext, useParams } from 'react-router-dom'
 import {
   ChevronLeft, Printer, Mail, Phone, Globe, Clock, Users, CalendarDays, BedDouble, CreditCard,
-  MessageSquare, StickyNote, Trash2, Send, CheckCircle2, XCircle, LogIn, LogOut, UserX, PlusCircle, MailCheck, MailWarning, History,
+  MessageSquare, StickyNote, Trash2, Send, CheckCircle2, XCircle, LogIn, LogOut, UserX, PlusCircle, MailCheck, MailWarning, History, DoorOpen,
 } from 'lucide-react'
 import { useActivityFor, useBookingNotes } from '../../lib/bookings'
 import { api, friendlyError } from '../../lib/firebase'
@@ -10,7 +10,8 @@ import { statusClass, statusLabel, guestName } from '../../lib/status'
 import { prettyDate } from '../../utils'
 import { Person } from './Avatar'
 import PriceLines from '../../components/PriceLines'
-import FrontDeskButtons from './FrontDesk'
+import FrontDeskButtons, { UnitSelect } from './FrontDesk'
+import { useDialog } from '../../components/Dialog'
 
 const when = (d) => (d ? d.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '')
 
@@ -18,6 +19,7 @@ export default function BookingDetails() {
   const { ref } = useParams()
   const { bookings } = useOutletContext()
   const b = bookings.find((x) => x.ref === ref)
+  const dialog = useDialog()
   const [mailBusy, setMailBusy] = useState(false)
   const [mailMsg, setMailMsg] = useState(null)
 
@@ -63,11 +65,11 @@ export default function BookingDetails() {
   }
 
   const cancel = async () => {
-    if (!window.confirm(`Cancel ${b.ref} for ${guestName(b)}? The guest will see it as cancelled by the hotel.`)) return
+    if (!(await dialog.confirm({ title: `Cancel ${b.ref}?`, message: `${guestName(b)}, ${b.roomName}. The rooms go back on sale and the guest sees it as cancelled by the hotel.`, confirmLabel: 'Cancel booking', cancelLabel: 'Keep booking', danger: true }))) return
     try {
       await api.cancelBooking({ ref: b.ref })
     } catch (e) {
-      window.alert(friendlyError(e))
+      dialog.alert({ title: "Couldn't cancel", message: friendlyError(e) })
     }
   }
 
@@ -121,6 +123,7 @@ export default function BookingDetails() {
           <ul className="bd-list">
             <li><CalendarDays size={16} /> {prettyDate(b.checkIn)} → {prettyDate(b.checkOut)}</li>
             <li><BedDouble size={16} /> {b.nights} night{b.nights === 1 ? '' : 's'}</li>
+            <RoomNumber b={b} />
             <li><Users size={16} /> {b.guests} guest{b.guests === 1 ? '' : 's'}</li>
             <li><CreditCard size={16} /> {b.payment === 'card' ? 'Card' : 'Pay at hotel'}</li>
           </ul>
@@ -160,6 +163,55 @@ export default function BookingDetails() {
   )
 }
 
+/** Room number: show it, and let staff assign / change it for upcoming or current stays. */
+function RoomNumber({ b }) {
+  const { units = [] } = useOutletContext()
+  const [editing, setEditing] = useState(false)
+  const [unit, setUnit] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const hasNumbers = units.some((u) => u.roomId === b.roomId)
+  const live = b.status === 'Confirmed' || b.status === 'CheckedIn'
+  if (!hasNumbers && !b.unit) return null
+
+  const save = async (value) => {
+    setBusy(true)
+    setErr('')
+    try {
+      await api.assignRoom(b.ref, value || null)
+      setEditing(false)
+      setUnit('')
+    } catch (e) {
+      setErr(friendlyError(e))
+    }
+    setBusy(false)
+  }
+
+  return (
+    <li className="bd-unit">
+      <DoorOpen size={16} />
+      {editing ? (
+        <span className="bd-unit-edit no-print">
+          <UnitSelect booking={b} value={unit} onChange={setUnit} />
+          <button className="btn btn-gold btn-sm" disabled={!unit || busy} onClick={() => save(unit)}>Save</button>
+          <button className="text-btn" onClick={() => setEditing(false)}>Cancel</button>
+        </span>
+      ) : (
+        <span>
+          {b.unit ? <strong>Room {b.unit}</strong> : <span className="muted">No room number yet</span>}
+          {live && (
+            <span className="no-print">
+              {' · '}<button className="text-btn" onClick={() => setEditing(true)}>{b.unit ? 'Change' : 'Assign room'}</button>
+              {b.unit && b.status === 'Confirmed' && <>{' · '}<button className="text-btn" disabled={busy} onClick={() => save(null)}>Remove</button></>}
+            </span>
+          )}
+        </span>
+      )}
+      {err && <small className="fd-err">{err}</small>}
+    </li>
+  )
+}
+
 /** Everything the activity log recorded for this booking (who cancelled, checked in, …). */
 function BookingActivity({ refId }) {
   const { entries, error } = useActivityFor(refId)
@@ -189,6 +241,7 @@ function BookingActivity({ refId }) {
 }
 
 function Notes({ refId }) {
+  const dialog = useDialog()
   const { notes, loading, error } = useBookingNotes(refId)
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
@@ -209,7 +262,7 @@ function Notes({ refId }) {
   }
 
   const remove = async (id) => {
-    if (!window.confirm('Delete this note?')) return
+    if (!(await dialog.confirm({ title: 'Delete this note?', message: 'Other staff will no longer see it.', confirmLabel: 'Delete note', danger: true }))) return
     try {
       await api.deleteNote(refId, id)
     } catch (e) {

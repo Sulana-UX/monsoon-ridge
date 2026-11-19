@@ -12,7 +12,7 @@ import { promoProblem, quoteStay } from './pricing.js'
 import { promoRef, rulesFrom, rulesRef } from './pricingStore.js'
 import { later, sendBookingEmails, sendCancellationEmail } from './notify.js'
 import { logActivity, lkr } from './activity.js'
-import { isStaffEmail } from './staff.js'
+import { getStaffRole } from './staff.js'
 import { parseBookingRequest, parseRef, nightsOf, hotelToday } from './validate.js'
 
 const RATE_WINDOW_MS = 10 * 60 * 1000
@@ -174,11 +174,12 @@ export async function cancelBooking(user, refParam) {
  */
 export async function syncAdminClaim(user) {
   // Owners (ADMIN_EMAILS) + staff added from the dashboard (staff.js)
-  const shouldBeAdmin = await isStaffEmail(user.email)
-  if (shouldBeAdmin === (user.admin === true)) return { admin: shouldBeAdmin, changed: false }
+  const role = await getStaffRole(user.email)
+  const shouldBeAdmin = Boolean(role)
+  if (shouldBeAdmin === (user.admin === true) && (role || null) === (user.role || null)) return { admin: shouldBeAdmin, role, changed: false }
 
   const record = await adminAuth.getUser(user.uid)
-  await adminAuth.setCustomUserClaims(user.uid, { ...(record.customClaims || {}), admin: shouldBeAdmin })
-  console.info('admin claim changed', { uid: user.uid, admin: shouldBeAdmin })
-  return { admin: shouldBeAdmin, changed: true }
+  await adminAuth.setCustomUserClaims(user.uid, { ...(record.customClaims || {}), admin: shouldBeAdmin, role: role || null })
+  console.info('staff claim changed', { uid: user.uid, admin: shouldBeAdmin, role })
+  return { admin: shouldBeAdmin, role, changed: true }
 }

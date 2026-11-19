@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, CalendarDays, CalendarRange, CalendarOff, Users, LogOut, BedDouble, Menu, ChevronRight, Tag, BarChart3, Inbox as InboxIcon, ShieldCheck, History } from 'lucide-react'
-import { useBookings, useBlocks, useMessages } from '../../lib/bookings'
+import { LayoutDashboard, CalendarDays, CalendarRange, CalendarOff, Users, LogOut, BedDouble, Menu, ChevronRight, Tag, BarChart3, Inbox as InboxIcon, ShieldCheck, History, Sparkles } from 'lucide-react'
+import { useBookings, useBlocks, useMessages, useUnits } from '../../lib/bookings'
 import { useAuth } from '../../context/AuthContext'
 import { useAllRooms } from '../../context/RoomsContext'
 import { prettyDate, today } from '../../utils'
@@ -13,14 +13,15 @@ const NAV = [
   { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/admin/bookings', label: 'Bookings', icon: CalendarDays, count: 'upcoming' },
   { to: '/admin/calendar', label: 'Calendar', icon: CalendarRange },
-  { to: '/admin/rooms', label: 'Rooms', icon: BedDouble },
+  { to: '/admin/housekeeping', label: 'Housekeeping', icon: Sparkles, count: 'dirty' },
+  { to: '/admin/rooms', label: 'Rooms', icon: BedDouble, manager: true },
   { to: '/admin/blocks', label: 'Blocked dates', icon: CalendarOff },
   { to: '/admin/guests', label: 'Guests', icon: Users },
   { to: '/admin/inbox', label: 'Inbox', icon: InboxIcon, count: 'unread' },
-  { to: '/admin/pricing', label: 'Pricing & promos', icon: Tag },
-  { to: '/admin/reports', label: 'Reports', icon: BarChart3 },
-  { to: '/admin/staff', label: 'Staff', icon: ShieldCheck },
-  { to: '/admin/activity', label: 'Activity log', icon: History },
+  { to: '/admin/pricing', label: 'Pricing & promos', icon: Tag, manager: true },
+  { to: '/admin/reports', label: 'Reports', icon: BarChart3, manager: true },
+  { to: '/admin/staff', label: 'Staff', icon: ShieldCheck, manager: true },
+  { to: '/admin/activity', label: 'Activity log', icon: History, manager: true },
 ]
 
 const MountainMark = () => (
@@ -31,7 +32,8 @@ const MountainMark = () => (
 )
 
 export default function AdminLayout() {
-  const { user, logout } = useAuth()
+  const { user, logout, isManager } = useAuth()
+  const nav = NAV.filter((n) => isManager || !n.manager)
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -42,12 +44,14 @@ export default function AdminLayout() {
   // Blocks are optional data: if the rules aren't deployed yet, the dashboard still works
   const { blocks } = useBlocks()
   const { messages, error: messagesError } = useMessages()
+  const { units } = useUnits()
   const data = {
     bookings: bookingsState.bookings,
     rooms: roomsState.rooms,
     blocks,
     messages,
     messagesError,
+    units,
     loading: bookingsState.loading || roomsState.loading,
     error: bookingsState.error || roomsState.error,
   }
@@ -56,7 +60,8 @@ export default function AdminLayout() {
   const counts = useMemo(() => ({
     upcoming: bookingsState.bookings.filter((b) => b.status === 'Confirmed' && b.checkOut > t).length,
     unread: messages.filter((m) => m.status === 'new').length,
-  }), [bookingsState.bookings, messages, t])
+    dirty: units.filter((u) => !u.outOfOrder && u.housekeeping === 'dirty').length,
+  }), [bookingsState.bookings, messages, units, t])
 
   useEffect(() => setMenuOpen(false), [pathname])
 
@@ -81,7 +86,7 @@ export default function AdminLayout() {
 
         <div className="admin-nav-label">Manage</div>
         <nav>
-          {NAV.map(({ to, label, icon: Icon, end, count }) => (
+          {nav.map(({ to, label, icon: Icon, end, count }) => (
             <NavLink key={to} to={to} end={end} className="admin-nav">
               <Icon size={18} /> {label}
               {count && counts[count] > 0 && <span className="nav-count">{counts[count]}</span>}
@@ -93,7 +98,7 @@ export default function AdminLayout() {
           <Avatar name={name} />
           <div>
             <strong>{name}</strong>
-            <small>{user.email}</small>
+            <small>{isManager ? 'Admin' : 'Front desk'} · {user.email}</small>
           </div>
           <button className="admin-signout" onClick={signOut} title="Sign out" aria-label="Sign out">
             <LogOut size={16} />

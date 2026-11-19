@@ -4,6 +4,7 @@ import { Sun, CalendarHeart, Tag, Plus, Trash2, Save, Pause, Play, Percent } fro
 import { api, friendlyError } from '../../lib/firebase'
 import { usePricingRules, usePromos } from '../../lib/bookings'
 import { addDays, formatLKR, prettyDate, today } from '../../utils'
+import { useDialog } from '../../components/Dialog'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const NIGHTS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -172,6 +173,7 @@ const promoState = (p, t) =>
         : ['Active', 'status status--in']
 
 function Promos() {
+  const dialog = useDialog()
   const { promos, loading, error } = usePromos()
   const t = today()
   const [f, setF] = useState({ code: '', percent: 10, expires: addDays(t, 30), maxUses: '' })
@@ -249,7 +251,7 @@ function Promos() {
                           {p.active === false ? <Play size={15} /> : <Pause size={15} />}
                         </button>
                         <button className="icon-btn" title="Delete" aria-label={`Delete ${p.code}`}
-                          onClick={() => window.confirm(`Delete ${p.code}? Bookings that used it keep their discount.`) && act(() => api.deletePromo(p.code))}>
+                          onClick={async () => { if (await dialog.confirm({ title: `Delete ${p.code}?`, message: 'Guests can no longer use it. Bookings that already used it keep their discount.', confirmLabel: 'Delete code', danger: true })) act(() => api.deletePromo(p.code)) }}>
                           <Trash2 size={15} />
                         </button>
                       </td>

@@ -136,3 +136,30 @@ export function staffNewMessage(m) {
   const text = `New message from ${m.name} <${m.email}>\nSubject: ${m.subject || '-'}\n\n${m.message}\n\n${link}`
   return { subject, html: layout({ preheader: m.message.slice(0, 90), title: subject, body }), text }
 }
+
+/* ---------- account emails (sent through Brevo instead of Firebase's default sender) ---------- */
+
+export function verifyEmail({ name, link }) {
+  const subject = `Confirm your email for ${HOTEL.short}`
+  const body = [
+    h1('Confirm your email'),
+    p(`Hi ${esc(name || 'there')}, please confirm this is your email address. It keeps your bookings safe and lets us send your confirmations.`),
+    `<p style="margin:22px 0">${button(link, 'Confirm my email')}</p>`,
+    p(`<span style="font-size:13px;color:${C.muted}">The button doesn't work? Copy this link into your browser:<br><span style="word-break:break-all">${esc(link)}</span></span>`),
+    p(`<span style="font-size:13px;color:${C.muted}">Didn't create an account? You can ignore this email.</span>`),
+  ].join('')
+  const text = `Confirm your email for ${HOTEL.short}\n\nOpen this link to confirm your email address:\n${link}\n\nDidn't create an account? Ignore this email.`
+  return { subject, html: layout({ preheader: 'One click to confirm your email address', title: subject, body }), text }
+}
+
+export function passwordResetEmail({ link }) {
+  const subject = `Reset your ${HOTEL.short} password`
+  const body = [
+    h1('Reset your password'),
+    p('We got a request to reset the password for this email. Choose a new one with the button below.'),
+    `<p style="margin:22px 0">${button(link, 'Choose a new password')}</p>`,
+    p(`<span style="font-size:13px;color:${C.muted}">The link works once and expires after an hour. If you didn't ask for this, ignore this email; your password stays the same.</span>`),
+  ].join('')
+  const text = `Reset your ${HOTEL.short} password:\n${link}\n\nIf you didn't ask for this, ignore this email.`
+  return { subject, html: layout({ preheader: 'Choose a new password', title: subject, body }), text }
+}

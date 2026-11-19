@@ -4,10 +4,12 @@ import { CalendarOff, Trash2, Wrench, CalendarRange, CheckCircle2, AlertTriangle
 import { api, friendlyError } from '../../lib/firebase'
 import { useAvailability } from '../../lib/useAvailability'
 import { addDays, nightsBetween, prettyDate, today } from '../../utils'
+import { useDialog } from '../../components/Dialog'
 
 const REASONS = ['Renovation', 'Maintenance', 'Deep cleaning', 'Private event', 'Staff use']
 
 export default function Blocks() {
+  const dialog = useDialog()
   const { rooms, blocks } = useOutletContext()
   const t = today()
   const active = rooms.filter((r) => r.active !== false)
@@ -40,7 +42,7 @@ export default function Blocks() {
   }
 
   const remove = async (b) => {
-    if (!window.confirm(`Remove the block on ${b.units} × ${b.roomName} (${prettyDate(b.from)} → ${prettyDate(b.to)})? Those rooms go back on sale.`)) return
+    if (!(await dialog.confirm({ title: 'Remove this block?', message: `${b.units} × ${b.roomName}, ${prettyDate(b.from)} → ${prettyDate(b.to)}. Those rooms go back on sale straight away.`, confirmLabel: 'Remove block' }))) return
     try {
       await api.deleteBlock(b.id)
     } catch (err) {

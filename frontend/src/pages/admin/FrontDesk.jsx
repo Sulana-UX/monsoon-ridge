@@ -1,7 +1,10 @@
 import { useState } from 'react'
-import { LogIn, LogOut, UserX, Undo2 } from 'lucide-react'
+import { useOutletContext } from 'react-router-dom'
+import { LogIn, LogOut, UserX, Undo2, DoorOpen, X } from 'lucide-react'
 import { api, friendlyError } from '../../lib/firebase'
+import { unitOptions, typeHasUnits, HK_LABEL } from '../../lib/units'
 import { today } from '../../utils'
+import { useDialog } from '../../components/Dialog'
 
 /** Which front-desk actions make sense for this booking today (the server re-checks). */
 export function actionsFor(b, t = today()) {
@@ -28,22 +31,42 @@ const META = {
   'undo-check-in': { label: 'Undo check-in', icon: Undo2, cls: 'fd-btn--ghost' },
 }
 
+/** A <select> of the room numbers this booking can take (clean first). */
+export function UnitSelect({ booking, value, onChange, id }) {
+  const { units = [], bookings = [] } = useOutletContext() || {}
+  const options = unitOptions(booking, units, bookings)
+  if (!options.length) return <p className="fd-err">No {booking.roomName} is free. Check the Housekeeping page.</p>
+  return (
+    <select id={id} className="unit-select" value={value} onChange={(e) => onChange(e.target.value)} aria-label="Room number">
+      <option value="">Choose room…</option>
+      {options.map((u) => <option key={u.number} value={u.number}>Room {u.number}{u.housekeeping !== 'clean' ? ` (${HK_LABEL[u.housekeeping]?.toLowerCase()})` : ''}</option>)}
+    </select>
+  )
+}
+
 /** Buttons for the allowed actions. `only` limits which ones are shown. */
 export default function FrontDeskButtons({ booking, only, compact = false, onDone }) {
+  const { units = [] } = useOutletContext() || {}
+  const dialog = useDialog()
   const [busy, setBusy] = useState(null)
   const [err, setErr] = useState('')
+  const [picking, setPicking] = useState(false)
+  const [unit, setUnit] = useState('')
   const t = today()
   let actions = actionsFor(booking, t)
   if (only) actions = actions.filter((a) => only.includes(a))
   if (!actions.length) return null
 
-  const run = async (action) => {
+  const needsRoom = typeHasUnits(booking.roomId, units) && !booking.unit
+
+  const run = async (action, extra) => {
     const q = confirmText(action, booking, t)
-    if (q && !window.confirm(q)) return
+    if (q && !(await dialog.confirm({ title: action === 'no-show' ? 'Mark as no-show?' : 'Check out early?', message: q, confirmLabel: action === 'no-show' ? 'Mark no-show' : 'Check out now', danger: action === 'no-show' }))) return
     setBusy(action)
     setErr('')
     try {
-      await api.setBookingStatus(booking.ref, action)
+      await api.setBookingStatus(booking.ref, action, extra)
+      setPicking(false)
       onDone?.(action)
     } catch (e) {
       setErr(friendlyError(e))
@@ -51,13 +74,29 @@ export default function FrontDeskButtons({ booking, only, compact = false, onDon
     setBusy(null)
   }
 
+  // Check-in for a room type with numbers, and no room chosen yet: pick one first
+  if (picking) {
+    return (
+      <div className="fd-actions fd-pick">
+        <DoorOpen size={16} className="fd-pick-icon" />
+        <UnitSelect booking={booking} value={unit} onChange={setUnit} />
+        <button type="button" className="fd-btn fd-btn--primary" disabled={!unit || !!busy} onClick={() => run('check-in', { unit })}>
+          {busy ? <span className="spinner spinner--sm" /> : <LogIn size={14} />} Check in
+        </button>
+        <button type="button" className="icon-btn" aria-label="Cancel" onClick={() => { setPicking(false); setErr('') }}><X size={14} /></button>
+        {err && <p className="fd-err" role="alert">{err}</p>}
+      </div>
+    )
+  }
+
   return (
     <div className={`fd-actions ${compact ? 'fd-actions--compact' : ''}`}>
       {actions.map((a) => {
         const { label, icon: Icon, cls } = META[a]
+        const onClick = a === 'check-in' && needsRoom ? () => setPicking(true) : () => run(a)
         return (
-          <button key={a} type="button" className={`fd-btn ${cls}`} disabled={!!busy} onClick={() => run(a)}>
-            {busy === a ? <span className="spinner spinner--sm" /> : <Icon size={compact ? 14 : 16} />} {label}
+          <button key={a} type="button" className={`fd-btn ${cls}`} disabled={!!busy} onClick={onClick}>
+            {busy === a ? <span className="spinner spinner--sm" /> : <Icon size={compact ? 14 : 16} />} {label}{a === 'check-in' && booking.unit ? ` · ${booking.unit}` : ''}
           </button>
         )
       })}

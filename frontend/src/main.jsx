@@ -6,6 +6,7 @@ import { BookingProvider } from './context/BookingContext'
 import { AuthProvider } from './context/AuthContext'
 import { RoomsProvider } from './context/RoomsContext'
 import './index.css'
+import { DialogProvider } from './components/Dialog'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -13,7 +14,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <AuthProvider>
         <RoomsProvider>
           <BookingProvider>
-            <App />
+            <DialogProvider>
+              <App />
+            </DialogProvider>
           </BookingProvider>
         </RoomsProvider>
       </AuthProvider>

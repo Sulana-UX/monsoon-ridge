@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom'
 import { Inbox as InboxIcon, Mail, Phone, Reply, Archive, ArchiveRestore, Trash2, MailOpen, ChevronLeft, Search } from 'lucide-react'
 import { api, friendlyError } from '../../lib/firebase'
 import { Person } from './Avatar'
+import { useDialog } from '../../components/Dialog'
 
 const FOLDERS = [
   { key: 'inbox', label: 'Inbox', test: (m) => m.status !== 'archived' },
@@ -21,6 +22,7 @@ const when = (d) => {
 const full = (d) => (d ? d.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '')
 
 export default function Inbox() {
+  const dialog = useDialog()
   const { messages, messagesError } = useOutletContext()
   const [folder, setFolder] = useState('inbox')
   const [q, setQ] = useState('')
@@ -126,7 +128,11 @@ export default function Inbox() {
                     <button className="btn btn-outline btn-sm" onClick={() => { act(() => api.setMessageStatus(open.id, 'archived')); setOpenId(null) }}><Archive size={15} /> Archive</button>
                   )}
                   <button className="btn btn-outline btn-sm msg-delete"
-                    onClick={() => window.confirm(`Delete this message from ${open.name}? This can't be undone.`) && act(async () => { await api.deleteMessage(open.id); setOpenId(null) })}>
+                    onClick={async () => {
+                      if (await dialog.confirm({ title: 'Delete this message?', message: `From ${open.name}. It's removed for everyone and can't be undone (the activity log keeps a note of it).`, confirmLabel: 'Delete message', danger: true })) {
+                        act(async () => { await api.deleteMessage(open.id); setOpenId(null) })
+                      }
+                    }}>
                     <Trash2 size={15} /> Delete
                   </button>
                 </div>

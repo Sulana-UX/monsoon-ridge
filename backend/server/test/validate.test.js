@@ -278,3 +278,50 @@ test('staff email validation', () => {
   assert.throws(() => parseStaffEmail('nope'))
   assert.throws(() => parseStaffEmail('a/b@x.com'))
 })
+
+import { verifyEmail, passwordResetEmail } from '../src/emailTemplates.js'
+import { continueUrl } from '../src/accountEmails.js'
+
+test('account emails', () => {
+  const v = verifyEmail({ name: '<b>Ann</b>', link: 'https://x.firebaseapp.com/__/auth/action?mode=verifyEmail&oobCode=abc&a=1' })
+  assert.match(v.subject, /Confirm your email/)
+  assert.ok(!v.html.includes('<b>Ann</b>'), 'name escaped')
+  assert.match(v.html, /oobCode=abc&amp;a=1/) // link escaped inside HTML
+  assert.match(v.text, /oobCode=abc&a=1/)
+  assert.match(passwordResetEmail({ link: 'https://l' }).html, /Choose a new password/)
+  const allowed = ['http://localhost:5173', 'https://monsoon-ridge.web.app']
+  assert.equal(continueUrl('http://localhost:5173', allowed), 'http://localhost:5173/login')
+  assert.equal(continueUrl('https://evil.example', allowed), 'https://monsoon-ridge.web.app/login')
+  assert.equal(continueUrl(undefined, allowed), 'https://monsoon-ridge.web.app/login')
+})
+
+import { parseUnitList, parseUnitNumber, unitClash, parseHousekeeping } from '../src/unitRules.js'
+
+test('room numbers: parsing', () => {
+  assert.deepEqual(parseUnitList('101, 102 103\n104;105'), ['101', '102', '103', '104', '105'])
+  assert.deepEqual(parseUnitList(['v1', 'V-2']), ['V1', 'V-2'])
+  assert.deepEqual(parseUnitList(''), [])
+  assert.equal(parseUnitNumber(7), '7')
+  assert.throws(() => parseUnitList('101, 101'), /twice/)
+  assert.throws(() => parseUnitList('10 1/2'), /valid room number/)
+  assert.throws(() => parseUnitNumber('ROOM-NUMBER-TOO-LONG'))
+})
+
+test('room numbers: clashes', () => {
+  const me = { ref: 'A', checkIn: '2026-12-10', checkOut: '2026-12-13', status: 'Confirmed' }
+  const b = (ref, ci, co, status = 'Confirmed', extra = {}) => ({ ref, checkIn: ci, checkOut: co, status, ...extra })
+  assert.equal(unitClash(me, [b('B', '2026-12-13', '2026-12-15')]), null, 'back-to-back is fine')
+  assert.equal(unitClash(me, [b('B', '2026-12-08', '2026-12-10')]), null, 'leaves the day I arrive')
+  assert.equal(unitClash(me, [b('B', '2026-12-12', '2026-12-14')])?.ref, 'B', 'overlap')
+  assert.equal(unitClash(me, [b('B', '2026-12-11', '2026-12-12', 'Cancelled')]), null, 'cancelled ignored')
+  assert.equal(unitClash(me, [b('B', '2026-12-05', '2026-12-12', 'CheckedOut', { checkOutActual: '2026-12-09' })]), null, 'checked out')
+  assert.equal(unitClash(me, [b('A', '2026-12-10', '2026-12-13')]), null, 'itself')
+  assert.equal(unitClash(me, [b('B', '2026-12-05', '2026-12-12', 'CheckedIn')])?.ref, 'B', 'guest still in the room')
+})
+
+test('housekeeping input', () => {
+  assert.deepEqual(parseHousekeeping({ housekeeping: 'dirty' }), { housekeeping: 'dirty' })
+  assert.deepEqual(parseHousekeeping({ outOfOrder: true, note: ' Leaking tap ' }), { outOfOrder: true, note: 'Leaking tap' })
+  assert.throws(() => parseHousekeeping({ housekeeping: 'sparkly' }))
+  assert.throws(() => parseHousekeeping({}))
+})

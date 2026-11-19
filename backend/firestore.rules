@@ -7,7 +7,10 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
+    // Any staff member (Admin or Front desk)
     function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+    // Admin role only. Owners' older tokens have no role claim yet: they count as admin.
+    function isManager() { return isAdmin() && request.auth.token.get('role', 'admin') == 'admin'; }
 
     match /bookings/{ref} {
       // Guests see their own bookings; staff see all of them.
@@ -39,11 +42,11 @@ service cloud.firestore {
     // Season / weekend price rules and promo codes: staff read, API-only writes.
     // Guests never read these; they get a price quote from the API instead.
     match /settings/{id} {
-      allow read: if isAdmin();
+      allow read: if isManager();
       allow write: if false;
     }
     match /promos/{code} {
-      allow read: if isAdmin();
+      allow read: if isManager();
       allow write: if false;
     }
 
@@ -57,10 +60,16 @@ service cloud.firestore {
     // Staff can read; nobody can write, edit or delete from the browser,
     // so the log can't be changed after the fact.
     match /staff/{email} {
-      allow read: if isAdmin();
+      allow read: if isManager();
       allow write: if false;
     }
     match /activity/{id} {
+      allow read: if isManager();
+      allow write: if false;
+    }
+
+    // Room numbers + housekeeping status: all staff read (front desk + admin), API-only writes.
+    match /roomUnits/{number} {
       allow read: if isAdmin();
       allow write: if false;
     }

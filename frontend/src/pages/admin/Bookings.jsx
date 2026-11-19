@@ -5,6 +5,7 @@ import { api, friendlyError } from '../../lib/firebase'
 import { formatLKR, prettyDate, today } from '../../utils'
 import { Person } from './Avatar'
 import { isLive, statusClass, statusLabel } from '../../lib/status'
+import { useDialog } from '../../components/Dialog'
 
 const FILTERS = [
   { key: 'upcoming', label: 'Upcoming' },
@@ -39,6 +40,7 @@ function downloadCSV(rows, name) {
 }
 
 export default function Bookings() {
+  const dialog = useDialog()
   const { bookings } = useOutletContext()
   const [filter, setFilter] = useState('upcoming')
   const [q, setQ] = useState('')
@@ -59,14 +61,14 @@ export default function Bookings() {
         if (filter === 'cancelled') return !isLive(b)
         return true
       })
-      .filter((b) => !term || [b.ref, b.roomName, b.guest?.firstName, b.guest?.lastName, b.guest?.email, b.guest?.phone]
+      .filter((b) => !term || [b.ref, b.roomName, b.unit, b.guest?.firstName, b.guest?.lastName, b.guest?.email, b.guest?.phone]
         .some((v) => (v || '').toLowerCase().includes(term)))
       .sort((a, b) => (['upcoming', 'today', 'inhouse'].includes(filter) ? a.checkIn.localeCompare(b.checkIn) : 0))
   }, [bookings, filter, q, t])
 
   const cancel = async (b) => {
     const name = `${b.guest?.firstName} ${b.guest?.lastName}`
-    if (!window.confirm(`Cancel ${b.ref} for ${name}? The guest will see it as cancelled by the hotel.`)) return
+    if (!(await dialog.confirm({ title: `Cancel ${b.ref}?`, message: `${name}, ${b.roomName}. The rooms go back on sale and the guest sees it as cancelled by the hotel.`, confirmLabel: 'Cancel booking', cancelLabel: 'Keep booking', danger: true }))) return
     setBusyRef(b.ref)
     setMsg('')
     try {
@@ -135,7 +137,7 @@ export default function Bookings() {
                       {b.guest?.requests && <small className="admin-req">"{b.guest.requests}"</small>}
                     </Person>
                   </td>
-                  <td data-label="Room">{b.roomName}<small className="muted"><Users size={12} /> {b.guests} guest{b.guests > 1 ? 's' : ''}</small></td>
+                  <td data-label="Room">{b.roomName}{b.unit && <span className="unit-tag">{b.unit}</span>}<small className="muted"><Users size={12} /> {b.guests} guest{b.guests > 1 ? 's' : ''}</small></td>
                   <td data-label="Stay">{prettyDate(b.checkIn)}<small className="muted">→ {prettyDate(b.checkOut)} · {b.nights}n</small>
                     {b.guest?.arrival && <small className="muted">ETA {b.guest.arrival}</small>}</td>
                   <td data-label="Total"><strong>{formatLKR(b.total)}</strong><small className="muted">{b.payment === 'card' ? 'Card' : 'Pay at hotel'}</small></td>

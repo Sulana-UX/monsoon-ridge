@@ -37,7 +37,21 @@
 .admin-brand strong { display: block; font-family: var(--serif); font-size: 1.12rem; color: #fff; line-height: 1.15; }
 .admin-brand small { display: block; font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: #d4a857; margin-top: 2px; }
 .admin-nav-label { font-size: .68rem; letter-spacing: .16em; text-transform: uppercase; color: rgba(232, 239, 238, .45); padding: 10px 12px 6px; }
-.admin-side nav { display: flex; flex-direction: column; gap: 3px; }
+/* The menu scrolls on its own; the brand and the sign-out box always stay visible */
+.admin-side nav {
+  display: flex; flex-direction: column; gap: 3px;
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  margin: 0 -16px; padding: 0 16px 8px; /* room for the active-item marker at the left edge */
+  scrollbar-width: thin; scrollbar-color: rgba(232, 239, 238, .25) transparent;
+}
+.admin-side nav::-webkit-scrollbar { width: 6px; }
+.admin-side nav::-webkit-scrollbar-thumb { background: rgba(232, 239, 238, .22); border-radius: 6px; }
+.admin-brand, .admin-nav-label, .admin-user { flex-shrink: 0; }
+.admin-side { height: 100dvh; }
+@media (max-height: 760px) {
+  .admin-brand { padding-bottom: 12px; }
+  .admin-nav { padding-top: 8px; padding-bottom: 8px; }
+}
 .admin-nav {
   position: relative; display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 12px;
   font-weight: 500; font-size: .93rem; color: rgba(232, 239, 238, .78); transition: background .2s, color .2s;

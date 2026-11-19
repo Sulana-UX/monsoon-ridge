@@ -68,7 +68,11 @@ export const api = {
   createStaffBooking: (booking) => call('/api/admin/bookings', booking),
   createBlock: (block) => call('/api/admin/blocks', block),
   deleteBlock: (id) => call(`/api/admin/blocks/${encodeURIComponent(id)}`, null, 'DELETE'),
-  setBookingStatus: (ref, action) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/status`, { action }),
+  setBookingStatus: (ref, action, extra = {}) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/status`, { action, ...extra }),
+  // room numbers & housekeeping
+  setRoomNumbers: (roomId, numbers) => call(`/api/admin/rooms/${encodeURIComponent(roomId)}/numbers`, { numbers }, 'PUT'),
+  assignRoom: (ref, unit) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/room`, { unit }),
+  setHousekeeping: (number, changes) => call(`/api/admin/units/${encodeURIComponent(number)}`, changes, 'PUT'),
   addNote: (ref, text) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/notes`, { text }),
   deleteNote: (ref, id) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/notes/${encodeURIComponent(id)}`, null, 'DELETE'),
   // pricing rules & promo codes (staff)
@@ -78,12 +82,21 @@ export const api = {
   deletePromo: (code) => call(`/api/admin/promos/${encodeURIComponent(code)}`, null, 'DELETE'),
   // staff management
   listStaff: () => call('/api/admin/staff', null, 'GET'),
-  addStaff: (email) => call('/api/admin/staff', { email }),
+  addStaff: (email, role) => call('/api/admin/staff', { email, role }),
+  setStaffRole: (email, role) => call(`/api/admin/staff/${encodeURIComponent(email)}`, { role }, 'PUT'),
   removeStaff: (email) => call(`/api/admin/staff/${encodeURIComponent(email)}`, null, 'DELETE'),
   // guest communication (staff)
   resendConfirmation: (ref) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/email`),
   setMessageStatus: (id, status) => call(`/api/admin/messages/${encodeURIComponent(id)}`, { status }, 'PUT'),
   deleteMessage: (id) => call(`/api/admin/messages/${encodeURIComponent(id)}`, null, 'DELETE'),
+  // Account emails through the hotel's own sender (Brevo). { status: 'sent' | 'already' | 'skipped' }
+  sendVerification: async () => (await call('/api/auth/send-verification')).data,
+  passwordReset: async (email) => {
+    const res = await fetch(`${API_URL}/api/auth/password-reset`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new ApiError(`api/${data.error?.code || 'internal'}`, data.error?.message || 'Something went wrong. Please try again.')
+    return data
+  },
   // Public: contact form (no account needed)
   sendContact: async (msg) => {
     let res

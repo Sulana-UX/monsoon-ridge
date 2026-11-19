@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
-import { CalendarDays, Wallet, Moon, XCircle, LogIn, LogOut, ArrowRight, BedDouble, Coffee } from 'lucide-react'
+import { CalendarDays, Wallet, Moon, XCircle, LogIn, LogOut, ArrowRight, BedDouble, Coffee, DoorOpen } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { addDays, formatLKR, prettyDate, today } from '../../utils'
 import { ColumnChart, BarList, DataTable } from './BarChart'
@@ -55,7 +55,7 @@ function Delta({ now, prev, period, points = false, lowerIsBetter = false, digit
 
 export default function Overview() {
   const { bookings, rooms } = useOutletContext()
-  const { user } = useAuth()
+  const { user, isManager } = useAuth()
   const TOTAL_UNITS = rooms.filter((r) => r.active !== false).reduce((s, r) => s + (r.units || 0), 0)
   const [period, setPeriod] = useState(30)
   const t = today()
@@ -108,18 +108,21 @@ export default function Overview() {
         <div>
           <span className="eyebrow">Overview</span>
           <h1>{greeting()}{first ? `, ${first}` : ''}</h1>
-          <p>Here's how Monsoon Ridge is doing{period ? ` over the last ${period} days` : ''}.</p>
+          <p>{isManager ? <>Here's how Monsoon Ridge is doing{period ? ` over the last ${period} days` : ''}.</> : "Here's what's happening at the hotel today."}</p>
         </div>
-        <div className="admin-filters" role="tablist" aria-label="Period">
+        {isManager && <div className="admin-filters" role="tablist" aria-label="Period">
           {PERIODS.map((p) => (
             <button key={p.key} role="tab" aria-selected={period === p.key}
               className={`chip ${period === p.key ? 'is-active' : ''}`} onClick={() => setPeriod(p.key)}>
               {p.label}
             </button>
           ))}
-        </div>
+        </div>}
       </div>
 
+      {!isManager ? (
+        <FrontDeskStats arrivals={arrivals} departures={departures} inHouse={inHouse} tonight={tonight} total={TOTAL_UNITS} />
+      ) : (
       <div className="admin-stats">
         <div className="kpi kpi--hero">
           <div className="kpi-top"><span className="kpi-icon"><Wallet size={20} /></span></div>
@@ -146,6 +149,7 @@ export default function Overview() {
           <Delta now={cur.cancelRate} prev={prev?.cancelRate} period={period} points lowerIsBetter />
         </div>
       </div>
+      )}
 
       <div className="admin-grid">
         <section className="admin-card admin-card--wide">
@@ -163,7 +167,7 @@ export default function Overview() {
           <DataTable columns={['Night', 'Rooms booked', 'Occupancy']} rows={occupancy.map((o) => [prettyDate(o.key), `${o.booked} / ${TOTAL_UNITS}`, `${o.value}%`])} />
         </section>
 
-        <section className="admin-card admin-card--7">
+        {isManager && <section className="admin-card admin-card--7">
           <div className="admin-card-head">
             <div>
               <h3>Revenue by room</h3>
@@ -172,9 +176,9 @@ export default function Overview() {
           </div>
           <BarList title="Revenue by room type" data={byRoom} />
           <DataTable columns={['Room', 'Bookings', 'Revenue']} rows={byRoom.map((r) => [r.label, r.count, formatLKR(r.value)])} />
-        </section>
+        </section>}
 
-        <section className="admin-card admin-card--5">
+        <section className={`admin-card ${isManager ? 'admin-card--5' : 'admin-card--wide'}`}>
           <div className="admin-card-head">
             <div>
               <h3>Today at the hotel</h3>
@@ -183,8 +187,8 @@ export default function Overview() {
           </div>
           <div className="today-cols">
             <TodayList icon={LogIn} title="Arriving" items={arrivals} empty="No arrivals today" action="check-in" doneStatus="CheckedIn" doneLabel="Arrived"
-              detail={(b) => `${b.roomName}${b.guest?.arrival ? ' · ETA ' + b.guest.arrival : ''}`} />
-            <TodayList icon={LogOut} title="Departing" items={departures} empty="No departures today" action="check-out" doneStatus="CheckedOut" doneLabel="Left" detail={(b) => b.roomName} />
+              detail={(b) => `${b.roomName}${b.unit ? ' · Room ' + b.unit : ''}${b.guest?.arrival ? ' · ETA ' + b.guest.arrival : ''}`} />
+            <TodayList icon={LogOut} title="Departing" items={departures} empty="No departures today" action="check-out" doneStatus="CheckedOut" doneLabel="Left" detail={(b) => `${b.roomName}${b.unit ? ' · Room ' + b.unit : ''}`} />
           </div>
           <p className="today-foot"><BedDouble size={16} /> {inHouse.length} guest{inHouse.length === 1 ? '' : 's'} checked in{expected.length > 0 && <span> · {expected.length} late arrival{expected.length === 1 ? '' : 's'} not checked in yet</span>}</p>
         </section>
@@ -234,6 +238,41 @@ function TodayList({ icon: Icon, title, items, empty, detail, action, doneStatus
           ))}
         </ul>
       )}
+    </div>
+  )
+}
+
+/** Front-desk home: today's work, no revenue figures. */
+function FrontDeskStats({ arrivals, departures, inHouse, tonight, total }) {
+  const arrived = arrivals.filter((b) => b.status === 'CheckedIn').length
+  const left = departures.filter((b) => b.status === 'CheckedOut').length
+  const free = Math.max(0, total - tonight.booked)
+  return (
+    <div className="admin-stats">
+      <div className="kpi kpi--hero">
+        <div className="kpi-top"><span className="kpi-icon"><LogIn size={20} /></span></div>
+        <span className="kpi-label">Arriving today</span>
+        <span className="kpi-value">{arrivals.length}</span>
+        <div className="kpi-delta">{arrived} checked in · {arrivals.length - arrived} still to come</div>
+      </div>
+      <div className="kpi">
+        <div className="kpi-top"><span className="kpi-icon"><LogOut size={20} /></span></div>
+        <span className="kpi-label">Departing today</span>
+        <span className="kpi-value">{departures.length}</span>
+        <div className="kpi-delta">{left} checked out · {departures.length - left} still in</div>
+      </div>
+      <div className="kpi">
+        <div className="kpi-top"><span className="kpi-icon kpi-icon--teal"><BedDouble size={20} /></span></div>
+        <span className="kpi-label">Guests in house</span>
+        <span className="kpi-value">{inHouse.length}</span>
+        <div className="kpi-delta">Checked in right now</div>
+      </div>
+      <div className="kpi">
+        <div className="kpi-top"><span className="kpi-icon kpi-icon--teal"><DoorOpen size={20} /></span></div>
+        <span className="kpi-label">Rooms free tonight</span>
+        <span className="kpi-value">{free}</span>
+        <div className="kpi-delta">of {total} rooms · {tonight.value}% booked</div>
+      </div>
     </div>
   )
 }

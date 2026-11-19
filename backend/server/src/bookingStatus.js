@@ -5,11 +5,14 @@ import { ApiError } from './errors.js'
 import { parseRef, hotelToday } from './validate.js'
 import { planStatusChange, nightsFrom } from './statusRules.js'
 import { logActivity } from './activity.js'
+import { checkUnitFor, typeHasUnits, unitRef } from './units.js'
+import { parseUnitNumber } from './unitRules.js'
 
 const ACTION_TEXT = { 'check-in': 'Checked in', 'check-out': 'Checked out', 'no-show': 'Marked no-show', 'undo-check-in': 'Undid check-in' }
 
-export async function changeBookingStatus(staff, refParam, action) {
+export async function changeBookingStatus(staff, refParam, action, body = {}) {
   const ref = parseRef(refParam)
+  const pickedUnit = action === 'check-in' && body?.unit ? parseUnitNumber(body.unit) : null
   const bookingRef = db.collection('bookings').doc(ref)
 
   let b
@@ -18,6 +21,15 @@ export async function changeBookingStatus(staff, refParam, action) {
     if (!snap.exists) throw new ApiError('not-found', 'Booking not found.')
     b = snap.data()
     const plan = planStatusChange(b, action, hotelToday())
+
+    // Room numbers: check-in needs one (if this room type has numbers); check-out leaves it dirty
+    let unit = b.unit || null
+    if (action === 'check-in') {
+      unit = pickedUnit || unit
+      if (unit) await checkUnitFor(tx, b, unit)
+      else if (await typeHasUnits(tx, b.roomId)) throw new ApiError('failed-precondition', 'Choose a room number for this guest first.')
+    }
+    const unitSnap = action === 'check-out' && unit ? await tx.get(unitRef(unit)) : null
 
     const freed = plan.freeFrom ? nightsFrom(b, plan.freeFrom) : []
     const invRefs = freed.map((d) => db.collection('inventory').doc(`${b.roomId}_${d}`))
@@ -29,11 +41,13 @@ export async function changeBookingStatus(staff, refParam, action) {
 
     const update = { status: plan.status, statusBy: staff.email ?? 'staff', statusAt: FieldValue.serverTimestamp() }
     for (const [k, v] of Object.entries(plan.fields)) update[k] = v === true ? FieldValue.serverTimestamp() : v ?? FieldValue.delete()
+    if (action === 'check-in' && unit) update.unit = unit
     tx.update(bookingRef, update)
-    return { ref, status: plan.status, freedNights: freed.length }
+    if (unitSnap?.exists) tx.update(unitSnap.ref, { housekeeping: 'dirty', updatedBy: staff.email ?? 'staff', updatedAt: FieldValue.serverTimestamp() })
+    return { ref, status: plan.status, freedNights: freed.length, unit }
   })
   await logActivity(staff, { action: `booking.${action}`, target: { type: 'booking', id: ref, label: ref },
-    summary: `${ACTION_TEXT[action] || action}: ${b.guest?.firstName ?? ''} ${b.guest?.lastName ?? ''}, ${b.roomName}${result.freedNights ? ` (${result.freedNights} night${result.freedNights === 1 ? '' : 's'} released)` : ''}` })
+    summary: `${ACTION_TEXT[action] || action}: ${b.guest?.firstName ?? ''} ${b.guest?.lastName ?? ''}, ${b.roomName}${result.unit ? `, room ${result.unit}` : ''}${result.freedNights ? ` (${result.freedNights} night${result.freedNights === 1 ? '' : 's'} released)` : ''}` })
   return result
 }
 

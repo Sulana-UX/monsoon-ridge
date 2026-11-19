@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, KeyRound } from 'lucide-react'
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, KeyRound, ChevronLeft } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { friendlyError } from '../lib/firebase'
 import Logo from '../components/Logo'
+import { images } from '../data/rooms'
 
 // Only follow redirects inside this site (blocks //evil.com style open redirects)
 const safePath = (p) => (typeof p === 'string' && p.startsWith('/') && !p.startsWith('//') ? p : '/')
@@ -13,6 +14,10 @@ const passwordProblem = (p) => {
   if (!/[A-Za-z]/.test(p) || !/\d/.test(p)) return 'Use both letters and numbers'
   return ''
 }
+
+/** 0–4: length 8+, letters + numbers, upper + lower case, 12+ chars or a symbol */
+const strength = (p) => !p ? 0 : [p.length >= 8, /[A-Za-z]/.test(p) && /\d/.test(p), /[a-z]/.test(p) && /[A-Z]/.test(p), p.length >= 12 || /[^A-Za-z0-9]/.test(p)].filter(Boolean).length
+const STRENGTH = ['', 'Weak', 'Okay', 'Good', 'Strong']
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -88,12 +93,19 @@ export default function Login({ mode: initialMode = 'login' }) {
     reset: ['Reset password', "Enter your email and we'll send you a reset link."],
   }
 
+  const pw = strength(form.password)
+
   return (
-    <section className="section auth-page">
-      <div className="auth-card">
-        <Link to="/" className="auth-logo"><Logo /></Link>
+    <section className="auth-full" style={{ backgroundImage: `url(${images.hero})` }}>
+      <header className="auth-full-top">
+        <Link to="/" aria-label="Monsoon Ridge home"><Logo light /></Link>
+        <Link to="/" className="auth-full-back"><ChevronLeft size={16} /> Back to site</Link>
+      </header>
+
+      <div className="auth-glass">
+        {mode === 'reset' && <div className="auth-icon auth-icon--sm"><KeyRound size={22} /></div>}
         <h1>{titles[mode][0]}</h1>
-        <p className="muted">{titles[mode][1]}</p>
+        <p className="auth-sub">{titles[mode][1]}</p>
 
         {mode !== 'reset' && (
           <>
@@ -106,24 +118,17 @@ export default function Login({ mode: initialMode = 'login' }) {
 
         <form onSubmit={submit} noValidate className="auth-form">
           {mode === 'register' && (
-            <label className="field">
-              <span>Full name</span>
-              <div className="input-wrap">
-                <User size={17} />
-                <input value={form.name} onChange={set('name')} autoComplete="name" maxLength={80} placeholder="Kasun Perera" />
-              </div>
-            </label>
-          )}
-          <label className="field">
-            <span>Email address</span>
             <div className="input-wrap">
-              <Mail size={17} />
-              <input type="email" value={form.email} onChange={set('email')} autoComplete="email" maxLength={254} placeholder="you@example.com" />
+              <User size={17} />
+              <input value={form.name} onChange={set('name')} autoComplete="name" maxLength={80} placeholder="Full name" aria-label="Full name" />
             </div>
-          </label>
+          )}
+          <div className="input-wrap">
+            <Mail size={17} />
+            <input type="email" value={form.email} onChange={set('email')} autoComplete="email" maxLength={254} placeholder="Email address" aria-label="Email address" />
+          </div>
           {mode !== 'reset' && (
-            <label className="field">
-              <span>Password</span>
+            <div>
               <div className="input-wrap">
                 <Lock size={17} />
                 <input
@@ -132,40 +137,41 @@ export default function Login({ mode: initialMode = 'login' }) {
                   onChange={set('password')}
                   autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
                   maxLength={128}
-                  placeholder={mode === 'register' ? 'At least 8 characters' : 'Your password'}
+                  placeholder={mode === 'register' ? 'Password (8+ characters)' : 'Password'}
+                  aria-label="Password"
                 />
-                <button type="button" className="pw-toggle" onClick={() => setShowPw((s) => !s)} aria-label={showPw ? 'Hide password' : 'Show password'}>
+                <button type="button" className="pw-toggle" onClick={() => setShowPw((v) => !v)} aria-label={showPw ? 'Hide password' : 'Show password'}>
                   {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
               </div>
-              {mode === 'register' && form.password && passwordProblem(form.password) && (
-                <small className="hint">{passwordProblem(form.password)}</small>
+              {mode === 'register' && form.password && (
+                <div className={`pw-meter pw-meter--${pw}`} aria-live="polite">
+                  <div className="pw-bars">{[1, 2, 3, 4].map((i) => <i key={i} className={i <= pw ? 'on' : ''} />)}</div>
+                  <small>{passwordProblem(form.password) || `${STRENGTH[pw]} password`}</small>
+                </div>
               )}
-            </label>
-          )}
-
-          {mode === 'login' && (
-            <button type="button" className="text-btn auth-forgot" onClick={() => setMode('reset')}>
-              Forgot password?
-            </button>
+              {mode === 'login' && <button type="button" className="text-btn auth-forgot" onClick={() => setMode('reset')}>Forgot password?</button>}
+            </div>
           )}
 
           {error && <p className="auth-msg auth-msg--err" role="alert">{error}</p>}
           {info && <p className="auth-msg" role="status">{info}</p>}
 
-          <button type="submit" className="btn btn-gold btn-block" disabled={busy}>
-            {busy ? <span className="spinner spinner--sm" /> : mode === 'reset' ? <KeyRound size={17} /> : null}
+          <button type="submit" className="btn btn-gold btn-block auth-submit" disabled={busy}>
+            {busy ? <span className="spinner spinner--sm" /> : null}
             {mode === 'login' ? 'Sign in' : mode === 'register' ? 'Create account' : 'Send reset link'}
             {!busy && mode !== 'reset' && <ArrowRight size={17} />}
           </button>
         </form>
 
-        <div className="auth-switch">
+        <p className="auth-switch">
           {mode === 'login' && <>New here? <button className="text-btn" onClick={() => setMode('register')}>Create an account</button></>}
-          {mode === 'register' && <>Already have an account? <button className="text-btn" onClick={() => setMode('login')}>Sign in</button></>}
+          {mode === 'register' && <>Have an account? <button className="text-btn" onClick={() => setMode('login')}>Sign in</button></>}
           {mode === 'reset' && <button className="text-btn" onClick={() => setMode('login')}>Back to sign in</button>}
-        </div>
+        </p>
       </div>
+
+      <p className="auth-full-foot">Monsoon Ridge Jungle Resort &amp; Spa · Ella, Sri Lanka</p>
     </section>
   )
 }

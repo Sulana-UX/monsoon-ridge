@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ShieldCheck, UserPlus, Trash2, Crown, Clock, MailWarning, History, RefreshCw } from 'lucide-react'
+import { ShieldCheck, UserPlus, Trash2, Crown, Clock, MailWarning, History, RefreshCw, ConciergeBell, KeyRound } from 'lucide-react'
 import { api, friendlyError } from '../../lib/firebase'
 import { useAuth } from '../../context/AuthContext'
 import { Person } from './Avatar'
+import { useDialog } from '../../components/Dialog'
+
+const ROLES = [
+  { value: 'frontdesk', label: 'Front desk', icon: ConciergeBell, sub: 'Bookings, calendar, check-in/out, walk-ins, blocked dates, guests, inbox' },
+  { value: 'admin', label: 'Admin', icon: KeyRound, sub: 'Everything, plus rooms, prices & promos, reports, staff and the activity log' },
+]
+const roleLabel = (r) => ROLES.find((x) => x.value === r)?.label ?? r
 
 const since = (iso) => {
   if (!iso) return null
@@ -20,11 +27,13 @@ function accountState(m) {
 }
 
 export default function Staff() {
+  const dialog = useDialog()
   const { user } = useAuth()
   const me = (user?.email || '').toLowerCase()
   const [members, setMembers] = useState(null)
   const [loadErr, setLoadErr] = useState('')
   const [email, setEmail] = useState('')
+  const [role, setRole] = useState('frontdesk')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
 
@@ -44,10 +53,10 @@ export default function Staff() {
     setBusy(true)
     setMsg(null)
     try {
-      const { data } = await api.addStaff(email.trim())
+      const { data } = await api.addStaff(email.trim(), role)
       setMsg({ ok: true, text: data.hasAccount
-        ? `${data.email} now has dashboard access. They may need to sign out and back in once.`
-        : `${data.email} added. They get access as soon as they sign up with this email and verify it.` })
+        ? `${data.email} now has ${roleLabel(data.role)} access. They may need to sign out and back in once.`
+        : `${data.email} added as ${roleLabel(data.role)}. Access starts when they sign up with this email and verify it.` })
       setEmail('')
       load()
     } catch (e2) {
@@ -56,8 +65,22 @@ export default function Staff() {
     setBusy(false)
   }
 
+  const changeRole = async (m, next) => {
+    if (next === m.role) return
+    const warn = next === 'frontdesk' ? ' They will be signed out and must sign in again.' : ' They may need to sign out and back in once.'
+    if (!(await dialog.confirm({ title: `Make ${m.email} ${roleLabel(next)}?`, message: warn.trim(), confirmLabel: `Change to ${roleLabel(next)}` }))) return
+    setMsg(null)
+    try {
+      await api.setStaffRole(m.email, next)
+      setMsg({ ok: true, text: `${m.email} is now ${roleLabel(next)}.` })
+      load()
+    } catch (e) {
+      setMsg({ ok: false, text: friendlyError(e) })
+    }
+  }
+
   const remove = async (m) => {
-    if (!window.confirm(`Remove dashboard access for ${m.email}? They are signed out everywhere straight away.`)) return
+    if (!(await dialog.confirm({ title: 'Remove dashboard access?', message: `${m.email} is signed out on every device straight away. You can add them again later.`, confirmLabel: 'Remove access', danger: true }))) return
     setMsg(null)
     try {
       await api.removeStaff(m.email)
@@ -77,7 +100,7 @@ export default function Staff() {
         <div>
           <span className="eyebrow">Settings</span>
           <h1>Staff</h1>
-          <p>Everyone listed here can open this dashboard: bookings, prices, rooms, inbox and this page.</p>
+          <p>Who can open this dashboard. Front desk sees day-to-day work only; Admins see everything, including prices, reports and this page.</p>
         </div>
         <Link to="/admin/activity" className="btn btn-outline btn-sm"><History size={16} /> Activity log</Link>
       </div>
@@ -89,6 +112,16 @@ export default function Staff() {
           <label className="field"><span>Email</span>
             <div className="input-wrap"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="frontdesk@example.com" maxLength={254} autoComplete="off" /></div>
           </label>
+          <fieldset className="role-pick">
+            <legend>Role</legend>
+            {ROLES.map(({ value, label, icon: Icon, sub }) => (
+              <label key={value} className={`role-opt ${role === value ? 'is-on' : ''}`}>
+                <input type="radio" name="role" value={value} checked={role === value} onChange={() => setRole(value)} />
+                <Icon size={20} />
+                <span><strong>{label}</strong><small>{sub}</small></span>
+              </label>
+            ))}
+          </fieldset>
           {msg && <p className={`auth-msg ${msg.ok ? '' : 'auth-msg--err'}`} role="status">{msg.text}</p>}
           <button className="btn btn-gold btn-block" disabled={busy || !email.includes('@')}>
             {busy ? <span className="spinner spinner--sm" /> : <UserPlus size={17} />} Give access
@@ -117,7 +150,11 @@ export default function Staff() {
                     <Person name={m.name || m.email.split('@')[0]} detail={m.email} />
                     <div className="staff-meta">
                       <span className="staff-role">
-                        {m.owner ? <><Crown size={13} /> Owner</> : 'Staff'}
+                        {m.owner ? <><Crown size={13} /> Owner · Admin</> : m.email === me ? roleLabel(m.role) : (
+                          <select className="role-select" value={m.role} onChange={(e) => changeRole(m, e.target.value)} aria-label={`Role for ${m.email}`}>
+                            {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                          </select>
+                        )}
                         {m.email === me && <span className="staff-you">You</span>}
                       </span>
                       <small>{m.owner ? 'Set in server settings (ADMIN_EMAILS)' : `Added by ${m.addedBy || 'staff'}${m.addedAt ? `, ${since(m.addedAt)}` : ''}`}</small>
