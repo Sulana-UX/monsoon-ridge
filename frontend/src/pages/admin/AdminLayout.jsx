@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, CalendarDays, CalendarRange, CalendarOff, Users, LogOut, BedDouble, Menu, ChevronRight, Tag, BarChart3, Inbox as InboxIcon, ShieldCheck, History, Sparkles, Star } from 'lucide-react'
 import { useBookings, useBlocks, useMessages, useUnits } from '../../lib/bookings'
@@ -6,6 +6,10 @@ import { useAuth } from '../../context/AuthContext'
 import { useAllRooms } from '../../context/RoomsContext'
 import { prettyDate, today } from '../../utils'
 import Avatar from './Avatar'
+import { useIdleSignOut } from '../../lib/useIdleSignOut'
+
+// Shared front-desk computers: sign staff out after this long without activity
+const IDLE_MINUTES = 30
 import './admin.css'
 import './frontdesk.css'
 
@@ -65,6 +69,13 @@ export default function AdminLayout() {
   }), [bookingsState.bookings, messages, units, t])
 
   useEffect(() => setMenuOpen(false), [pathname])
+
+  // Left open at the front desk? Sign out after IDLE_MINUTES without activity
+  const idleSignOut = useCallback(async () => {
+    await logout()
+    navigate('/login', { replace: true, state: { notice: `You were signed out after ${IDLE_MINUTES} minutes without activity. Please sign in again.` } })
+  }, [logout, navigate])
+  useIdleSignOut(IDLE_MINUTES, idleSignOut)
 
   const section = NAV.find((n) => (n.end ? pathname === n.to : pathname.startsWith(n.to)))?.label ?? 'Overview'
   const name = user.displayName || user.email.split('@')[0]

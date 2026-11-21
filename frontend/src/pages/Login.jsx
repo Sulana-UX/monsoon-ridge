@@ -7,7 +7,8 @@ import Logo from '../components/Logo'
 import { images } from '../data/rooms'
 
 // Only follow redirects inside this site (blocks //evil.com style open redirects)
-const safePath = (p) => (typeof p === 'string' && p.startsWith('/') && !p.startsWith('//') ? p : '/')
+// Only paths on this site: "/x", never "//evil.com", "/\evil.com", or anything with spaces or control characters
+const safePath = (p) => (typeof p === 'string' && p.length < 300 && /^\/(?![/\\])[^\\\s\x00-\x1f\x7f]*$/.test(p) ? p : '/')
 
 const passwordProblem = (p) => {
   if (p.length < 8) return 'At least 8 characters'
@@ -38,7 +39,7 @@ export default function Login({ mode: initialMode = 'login' }) {
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
-  const [info, setInfo] = useState('')
+  const [info, setInfo] = useState(typeof location.state?.notice === 'string' ? location.state.notice.slice(0, 200) : '')
   const [busy, setBusy] = useState(false)
 
   useEffect(() => setMode(initialMode), [initialMode])

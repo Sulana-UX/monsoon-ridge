@@ -7,8 +7,10 @@
     "public": "frontend/dist",
     "ignore": [
       "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/.DS_Store",
+      "**/.git/**",
+      "**/.env*"
     ],
     "cleanUrls": true,
     "trailingSlash": false,
@@ -48,7 +50,15 @@
           },
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self' https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.googleapis.com https://apis.google.com https://*.onrender.com https://api.cloudinary.com; frame-src https://monsoon-ridge.firebaseapp.com https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+            "value": "default-src 'self'; script-src 'self' https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.googleapis.com https://apis.google.com https://*.onrender.com https://api.cloudinary.com; frame-src https://monsoon-ridge.firebaseapp.com https://accounts.google.com; object-src 'none'; worker-src 'self'; manifest-src 'self'; media-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+          },
+          {
+            "key": "X-Permitted-Cross-Domain-Policies",
+            "value": "none"
+          },
+          {
+            "key": "Cross-Origin-Resource-Policy",
+            "value": "same-site"
           }
         ]
       },
@@ -121,6 +131,15 @@
           {
             "key": "Cache-Control",
             "value": "public, max-age=3600"
+          }
+        ]
+      },
+      {
+        "source": "/.well-known/security.txt",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "text/plain; charset=utf-8"
           }
         ]
       }

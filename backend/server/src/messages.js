@@ -17,9 +17,12 @@ const bad = (msg) => {
 }
 const STATUSES = ['new', 'read', 'replied', 'archived']
 
-const text = (v, label, { min = 0, max }) => {
+// eslint-disable-next-line no-control-regex
+const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g
+const text = (v, label, { min = 0, max, multiline = false }) => {
   if (v != null && typeof v !== 'string') bad(`${label} is invalid.`)
-  const s = (v || '').trim()
+  let s = (v || '').replace(CONTROL, '')
+  s = (multiline ? s.replace(/\r\n?/g, '\n') : s.replace(/[\r\n\t]+/g, ' ')).trim()
   if (s.length < min) bad(min === 1 ? `Please enter your ${label.toLowerCase()}.` : `${label} is too short.`)
   if (s.length > max) bad(`${label} is too long (max ${max} characters).`)
   return s
@@ -32,7 +35,7 @@ export function parseContact(data) {
     email: text(data.email, 'Email', { min: 3, max: 254 }).toLowerCase(),
     phone: text(data.phone, 'Phone', { max: 25 }),
     subject: text(data.subject, 'Subject', { max: 120 }),
-    message: text(data.message, 'Message', { min: 10, max: 3000 }),
+    message: text(data.message, 'Message', { min: 10, max: 3000, multiline: true }),
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m.email)) bad('Please enter a valid email address.')
   if (m.phone && !/^\+?[\d\s()-]{7,25}$/.test(m.phone)) bad('Phone number is invalid.')
@@ -85,7 +88,7 @@ const replyAddress = () => {
 
 /** Staff answers a contact message from the dashboard; the email goes out through Brevo. */
 export async function replyToMessage(staff, id, body) {
-  const reply = text(body?.text, 'Reply', { min: 1, max: 5000 })
+  const reply = text(body?.text, 'Reply', { min: 1, max: 5000, multiline: true })
   const ref = msgDoc(id)
   const snap = await ref.get()
   if (!snap.exists) throw new ApiError('not-found', 'Message not found.')

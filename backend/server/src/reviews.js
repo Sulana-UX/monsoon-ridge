@@ -63,7 +63,7 @@ export async function sendReviewInvite(refParam, { staff } = {}) {
 export async function getReviewStay(refParam, access) {
   const ref = parseRef(refParam)
   const snap = await bookingDoc(ref).get()
-  if (!snap.exists) throw new ApiError('not-found', 'Booking not found.')
+  if (!snap.exists) throw new ApiError('permission-denied', 'This review link is not valid. Please use the link in your email, or sign in with the account you booked with.')
   const b = snap.data()
   checkAccess(b, access)
   const existing = b.review ? (await reviewDoc(ref).get()).data() : null
@@ -81,7 +81,7 @@ export async function submitReview(refParam, access, body) {
   let b
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(bookingDoc(ref))
-    if (!snap.exists) throw new ApiError('not-found', 'Booking not found.')
+    if (!snap.exists) throw new ApiError('permission-denied', 'This review link is not valid. Please use the link in your email, or sign in with the account you booked with.')
     b = snap.data()
     checkAccess(b, access)
     const problem = reviewProblem(b, hotelToday())

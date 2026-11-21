@@ -35,7 +35,13 @@ app.use(cors({
   allowedHeaders: ['Authorization', 'Content-Type'],
   maxAge: 600,
 }))
-app.use(express.json({ limit: '10kb' })) // booking payloads are tiny; reject anything big
+app.use(express.json({ limit: '10kb', strict: true })) // booking payloads are tiny; reject anything big
+
+// API answers contain guests' details: never store them in browser or proxy caches
+app.use('/api', (_req, res, next) => {
+  res.set('Cache-Control', 'no-store')
+  next()
+})
 
 // Per-IP limits on top of the per-account limits in bookings.js
 app.use('/api', rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false }))
@@ -49,7 +55,23 @@ const accountEmailLimit = rateLimit({ windowMs: 60 * 60_000, limit: 5, standardH
 const reviewLimit = rateLimit({ windowMs: 60 * 60_000, limit: 10, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: { code: 'resource-exhausted', message: 'Too many tries. Please wait a while and try again.' } } })
 // Reads that hit the database per request (review page, change preview): 60 / 10 min per IP
 const reviewReadLimit = rateLimit({ windowMs: 10 * 60_000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false })
-const writeLimit = rateLimit({ windowMs: 10 * 60_000, limit: 20, standardHeaders: 'draft-7', legacyHeaders: false })
+/**
+ * Who a request is from, for rate limits: the account (uid inside the sign-in token) when there is one,
+ * otherwise the IP. Staff at one front desk share an IP; per account, one busy clerk can't lock out the others.
+ * The uid is read without checking the token here; a fake one gets rejected by requireUser a moment later,
+ * and the per-IP limit above still caps everything from one address.
+ */
+function accountKey(req) {
+  const m = /^Bearer [\w-]+\.([\w-]+)\.[\w-]+$/.exec(req.get('authorization') || '')
+  if (m) {
+    try {
+      const uid = JSON.parse(Buffer.from(m[1], 'base64url').toString('utf8')).user_id
+      if (typeof uid === 'string' && /^[\w-]{1,128}$/.test(uid)) return `uid:${uid}`
+    } catch { /* not a token: fall back to the IP */ }
+  }
+  return `ip:${req.ip}`
+}
+const writeLimit = rateLimit({ windowMs: 10 * 60_000, limit: 40, standardHeaders: 'draft-7', legacyHeaders: false, keyGenerator: accountKey })
 
 /** Signed in, email verified or not (only for asking for the verification email). */
 async function requireSignedIn(req, _res, next) {
