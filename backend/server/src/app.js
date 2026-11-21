@@ -18,6 +18,7 @@ import { setRoomNumbers, assignUnit, setHousekeeping } from './units.js'
 import { addStaff, removeStaff, listStaff, setStaffRole, getStaffRole, ROLE_LABEL } from './staff.js'
 import { logActivity, roomChanges, lkr } from './activity.js'
 import { getReviewStay, submitReview, sendReviewInvite, setReviewStatus, replyToReview } from './reviews.js'
+import { previewChange, changeBooking } from './changes.js'
 import { addCharge, removeCharge, addPayment, removePayment, issueInvoice, emailInvoice } from './folio.js'
 import { getQuote, savePricingRules, createPromo, updatePromo, deletePromo } from './pricingStore.js'
 
@@ -46,6 +47,7 @@ const contactLimit = rateLimit({ windowMs: 60 * 60_000, limit: 5, standardHeader
 const accountEmailLimit = rateLimit({ windowMs: 60 * 60_000, limit: 5, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: { code: 'resource-exhausted', message: 'Too many emails requested. Please wait a while and try again.' } } })
 // Reviews are public (token link): 10 submits / hour per IP
 const reviewLimit = rateLimit({ windowMs: 60 * 60_000, limit: 10, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: { code: 'resource-exhausted', message: 'Too many tries. Please wait a while and try again.' } } })
+// Reads that hit the database per request (review page, change preview): 60 / 10 min per IP
 const reviewReadLimit = rateLimit({ windowMs: 10 * 60_000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false })
 const writeLimit = rateLimit({ windowMs: 10 * 60_000, limit: 20, standardHeaders: 'draft-7', legacyHeaders: false })
 
@@ -141,6 +143,11 @@ app.get('/api/reviews/:ref', reviewReadLimit, optionalUser, handle((req) => getR
 app.post('/api/reviews/:ref', reviewLimit, optionalUser, handle((req) => submitReview(req.params.ref, reviewAccess(req), req.body)))
 
 app.post('/api/bookings', writeLimit, requireUser, handle((req) => createBooking(req.user, req.body)))
+// Change dates / room / guests: guests for their own booking, staff for any
+app.post('/api/bookings/:ref/change/preview', reviewReadLimit, requireUser, handle((req) => previewChange(req.user, req.params.ref, req.body)))
+app.post('/api/bookings/:ref/change', writeLimit, requireUser, handle((req) => changeBooking(req.user, req.params.ref, req.body)))
+app.post('/api/admin/bookings/:ref/change/preview', reviewReadLimit, requireUser, requireAdmin, handle((req) => previewChange(req.user, req.params.ref, req.body, { staff: true })))
+app.post('/api/admin/bookings/:ref/change', writeLimit, requireUser, requireAdmin, handle((req) => changeBooking(req.user, req.params.ref, req.body, { staff: true })))
 app.post('/api/bookings/:ref/cancel', writeLimit, requireUser, handle((req) => cancelBooking(req.user, req.params.ref)))
 app.post('/api/me/sync-admin', requireUser, handle((req) => syncAdminClaim(req.user)))
 

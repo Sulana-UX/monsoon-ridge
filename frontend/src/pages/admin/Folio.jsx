@@ -76,9 +76,9 @@ export default function Folio({ booking: b, price }) {
         )}
       </div>
 
-      <div className={`folio-balance ${t.balance > 0 ? 'is-due' : 'is-paid'}`}>
-        <span>{t.balance > 0 ? 'Balance due' : 'Paid in full'}</span>
-        <strong>{formatLKR(Math.max(0, t.balance))}</strong>
+      <div className={`folio-balance ${t.balance > 0 ? 'is-due' : t.balance < 0 ? 'is-refund' : 'is-paid'}`}>
+        <span>{t.balance > 0 ? 'Balance due' : t.balance < 0 ? 'Refund due to guest' : 'Paid in full'}</span>
+        <strong>{formatLKR(Math.abs(t.balance))}</strong>
       </div>
 
       {err && <p className="auth-msg auth-msg--err" role="alert">{err}</p>}

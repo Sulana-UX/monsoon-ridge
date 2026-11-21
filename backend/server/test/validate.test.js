@@ -419,3 +419,59 @@ test('bill: invoice emails escape what guests and staff typed', () => {
   assert.match(c.html, /How was your stay/)
   assert.match(c.html, /r=5/)
 })
+
+import { planChange, inventoryDelta, keptNights } from '../src/changeRules.js'
+
+
+test('change: guests can move their own booking before check-in day', () => {
+  const b = { roomId: 'garden', checkIn: '2026-06-10', checkOut: '2026-06-12', guests: 2, status: 'Confirmed' }
+  const today = '2026-06-01'
+  assert.deepEqual(planChange(b, { checkIn: '2026-06-11', checkOut: '2026-06-14' }, { today, staff: false }), { roomId: 'garden', checkIn: '2026-06-11', checkOut: '2026-06-14', nights: 3, guests: 2 })
+  assert.equal(planChange(b, { guests: '3' }, { today, staff: false }).guests, 3)
+  assert.throws(() => planChange(b, {}, { today, staff: false }), /Nothing has changed/)
+  assert.throws(() => planChange(b, { checkIn: '2026-05-30', checkOut: '2026-06-02' }, { today, staff: false }), /past/)
+  assert.throws(() => planChange(b, { checkOut: '2026-06-10' }, { today, staff: false }), /after check-in/)
+  assert.throws(() => planChange(b, { checkOut: '2026-08-01' }, { today, staff: false }), /limited to/)
+  assert.throws(() => planChange(b, { roomId: '../x' }, { today, staff: false }), /Unknown room/)
+  assert.throws(() => planChange(b, { checkIn: 'soon' }, { today, staff: false }), /valid dates/)
+  // on or after the check-in day: guests must call; staff can still change it
+  assert.throws(() => planChange(b, { checkOut: '2026-06-13' }, { today: '2026-06-10', staff: false }), /already started/)
+  assert.equal(planChange(b, { checkOut: '2026-06-13' }, { today: '2026-06-10', staff: true }).nights, 3)
+  // three guest changes, then the hotel
+  const changed = { ...b, changes: [{ role: 'guest' }, { role: 'staff' }, { role: 'guest' }, { role: 'guest' }] }
+  assert.throws(() => planChange(changed, { checkOut: '2026-06-13' }, { today, staff: false }), /contact the hotel/)
+  assert.equal(planChange(changed, { checkOut: '2026-06-13' }, { today, staff: true }).checkOut, '2026-06-13')
+})
+
+test('change: a checked-in stay can only be extended or shortened, by staff', () => {
+  const b = { roomId: 'garden', checkIn: '2026-06-10', checkOut: '2026-06-12', guests: 2, status: 'CheckedIn' }
+  const today = '2026-06-11'
+  assert.equal(planChange(b, { checkOut: '2026-06-15' }, { today, staff: true }).nights, 5)
+  assert.throws(() => planChange(b, { checkOut: '2026-06-15' }, { today, staff: false }), /front desk/)
+  assert.throws(() => planChange(b, { checkIn: '2026-06-11', checkOut: '2026-06-15' }, { today, staff: true }), /arrival date/)
+  assert.throws(() => planChange(b, { roomId: 'suite' }, { today, staff: true }), /room number/)
+  assert.throws(() => planChange(b, { checkOut: '2026-06-11' }, { today, staff: true }), /after today/)
+  for (const status of ['Cancelled', 'CheckedOut', 'NoShow']) assert.throws(() => planChange({ ...b, status }, { checkOut: '2026-06-15' }, { today, staff: true }))
+})
+
+test('change: only the nights that differ move in the inventory', () => {
+  const old = { roomId: 'garden', checkIn: '2026-06-10', checkOut: '2026-06-12' }
+  assert.deepEqual([...inventoryDelta(old, { ...old, checkOut: '2026-06-13' })], [['garden_2026-06-12', 1]])
+  assert.deepEqual([...inventoryDelta(old, { ...old, checkIn: '2026-06-11', checkOut: '2026-06-12' })], [['garden_2026-06-10', -1]])
+  assert.deepEqual(new Map(inventoryDelta(old, { roomId: 'suite', checkIn: '2026-06-10', checkOut: '2026-06-11' })),
+    new Map([['garden_2026-06-10', -1], ['garden_2026-06-11', -1], ['suite_2026-06-10', 1]]))
+  assert.equal(inventoryDelta(old, { ...old }).size, 0)
+})
+
+test('change: nights already booked keep their price, new nights use today\'s rates', () => {
+  const b = { roomId: 'garden', checkIn: '2026-06-10', nights: 2, total: 0,
+    price: { nightly: [{ date: '2026-06-10', rate: 10000 }, { date: '2026-06-11', rate: 10000 }], promo: { code: 'SAVE10', percent: 10 } } }
+  const kept = keptNights(b, 'garden')
+  const q = quoteStay(15000, ['2026-06-10', '2026-06-11', '2026-06-12'], { seasons: [], weekend: { days: [], amount: 0 } }, b.price.promo, kept)
+  assert.deepEqual(q.nightly.map((n) => n.rate), [10000, 10000, 15000])
+  assert.equal(q.rooms, 35000)
+  assert.equal(q.discount, 3500)
+  assert.equal(keptNights(b, 'suite'), null)
+  // old bookings without per-night prices: the flat rate is kept
+  assert.equal(keptNights({ checkIn: '2026-06-10', nights: 2, price: { rate: 9000 } }, undefined).get('2026-06-11').rate, 9000)
+})

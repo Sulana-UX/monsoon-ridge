@@ -269,3 +269,39 @@ export function checkoutEmail(b, t, reviewLink) {
   const text = `Thank you for staying in the ${b.roomName}, ${b.guest?.firstName || ''}!\n\nHow was your stay? ${reviewLink}\n\nYour bill${b.invoice?.number ? ` (${b.invoice.number})` : ''}:\n${invoiceText(b, t)}\n\n${invoiceLink(b)}`
   return { subject, html: layout({ preheader: 'Your receipt, and how was your stay?', title: subject, body }), text }
 }
+
+/* ---------- booking changed ---------- */
+
+const was = (before) => `${day(before.checkIn)} → ${day(before.checkOut)}, ${before.roomName}, ${before.guests} guest${before.guests === 1 ? '' : 's'}`
+const diffText = (d) => (d === 0 ? 'The price is the same.' : d > 0 ? `The new total is ${lkr(d)} more.` : `The new total is ${lkr(-d)} less.`)
+
+/** To the guest, after they (or the hotel) changed the booking. */
+export function bookingChanged(b, before, difference) {
+  const link = `${site()}/my-bookings`
+  const subject = `Booking updated: ${b.roomName}, ${day(b.checkIn)} (${b.ref})`
+  const body = [
+    h1('Your booking has been updated'),
+    p(`Hi ${esc(b.guest?.firstName || 'there')}, here are the new details of your stay. ${esc(diffText(difference))}`),
+    refBox(b.ref),
+    rows(stayRows(b)),
+    p(`<span style="font-size:13px;color:${C.muted}">Before: ${esc(was(before))}, ${lkr(before.total)}</span>`),
+    p(`Didn't ask for this change? Call us on ${esc(HOTEL.phone)} and quote your reference.`),
+    b.uid ? `<p style="margin:20px 0 0">${button(link, 'View my booking')}</p>` : '',
+  ].join('')
+  const text = `Your booking has been updated (${b.ref})\n\nRoom: ${b.roomName}\nCheck-in: ${day(b.checkIn)}\nCheck-out: ${day(b.checkOut)}\nGuests: ${b.guests}, ${b.nights} night(s)\nTotal: ${lkr(b.total)}\n${diffText(difference)}\n\nBefore: ${was(before)}, ${lkr(before.total)}\n\nDidn't ask for this? Call ${HOTEL.phone}.`
+  return { subject, html: layout({ preheader: `${day(b.checkIn)} → ${day(b.checkOut)} · ${b.roomName}`, title: subject, body }), text }
+}
+
+/** To staff, when a guest changed their own booking online. */
+export function staffBookingChanged(b, before, difference) {
+  const link = `${site()}/admin/bookings/${b.ref}`
+  const subject = `Booking changed by guest: ${b.ref} (${guestName(b)})`
+  const body = [
+    h1('A guest changed their booking'),
+    rows([['Guest', esc(guestName(b))], ['Reference', esc(b.ref)], ['Before', esc(was(before))], ['Now', esc(was(b))], ['New total', lkr(b.total), true], ['Difference', difference === 0 ? 'none' : `${difference > 0 ? '+' : '−'}${lkr(Math.abs(difference))}`]]),
+    b.unit ? '' : p(`<span style="font-size:13px;color:${C.muted}">Check the room number for the new dates.</span>`),
+    `<p style="margin:20px 0 0">${button(link, 'Open the booking')}</p>`,
+  ].join('')
+  const text = `${guestName(b)} changed booking ${b.ref}\nBefore: ${was(before)}\nNow: ${was(b)}\nNew total: ${lkr(b.total)}\n${link}`
+  return { subject, html: layout({ preheader: `${b.ref}: ${was(b)}`, title: subject, body }), text }
+}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarDays, Users, Luggage, ArrowRight, Star, FileText } from 'lucide-react'
+import { CalendarDays, Users, Luggage, ArrowRight, Star, FileText, CalendarClock } from 'lucide-react'
+import ChangeStay from '../components/ChangeStay'
 import PageHeader from '../components/PageHeader'
 import { useAuth } from '../context/AuthContext'
 import { useBookings } from '../lib/bookings'
@@ -16,6 +17,8 @@ export default function MyBookings() {
   const { bookings, loading, error } = useBookings({ uid: user.uid })
   const [busyRef, setBusyRef] = useState(null)
   const [cancelError, setCancelError] = useState('')
+  const [changing, setChanging] = useState(null)
+  const [notice, setNotice] = useState('')
 
   const cancelBooking = async (b) => {
     if (!(await dialog.confirm({ title: 'Cancel this booking?', message: `${b.roomName}, reference ${b.ref}. This cannot be undone.`, confirmLabel: 'Cancel booking', cancelLabel: 'Keep booking', danger: true }))) return
@@ -35,6 +38,7 @@ export default function MyBookings() {
       <section className="section">
         <div className="container narrow">
           {cancelError && <p className="auth-msg auth-msg--err" role="alert">{cancelError}</p>}
+          {notice && <p className="auth-msg" role="status">{notice}</p>}
           {loading ? (
             <div className="page-loading"><span className="spinner" /></div>
           ) : error ? (
@@ -52,7 +56,8 @@ export default function MyBookings() {
           ) : (
             <div className="booking-list">
               {bookings.map((b) => (
-                <article key={b.ref} className={`booking-item ${isLive(b) ? '' : 'is-cancelled'}`}>
+                <div key={b.ref} className="booking-wrap">
+                <article className={`booking-item ${isLive(b) ? '' : 'is-cancelled'}`}>
                   <img src={b.image} alt="" />
                   <div className="bi-body">
                     <div className="bi-top">
@@ -76,6 +81,9 @@ export default function MyBookings() {
                     ) : (
                       <Link to={`/review/${b.ref}`} className="btn btn-gold btn-sm bi-review"><Star size={14} /> Write a review</Link>
                     ))}
+                    {b.status === 'Confirmed' && b.checkIn > today() && changing !== b.ref && (
+                      <button className="text-btn bi-change" onClick={() => { setChanging(b.ref); setNotice('') }}><CalendarClock size={14} /> Change booking</button>
+                    )}
                     {b.status === 'Confirmed' && b.checkIn > today() && (
                       <button className="text-btn danger" disabled={busyRef === b.ref} onClick={() => cancelBooking(b)}>
                         {busyRef === b.ref ? 'Cancelling…' : 'Cancel booking'}
@@ -83,6 +91,11 @@ export default function MyBookings() {
                     )}
                   </div>
                 </article>
+                {changing === b.ref && (
+                  <ChangeStay booking={b} onClose={() => setChanging(null)}
+                    onDone={(r) => { setChanging(null); setNotice(`Booking ${r.ref} updated. We've emailed you the new details.`) }} />
+                )}
+                </div>
               ))}
             </div>
           )}

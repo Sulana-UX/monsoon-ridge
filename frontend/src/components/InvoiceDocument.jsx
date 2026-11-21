@@ -102,7 +102,7 @@ export default function InvoiceDocument({ booking: b, payment }) {
                 <td className="num">− {formatLKR(p.amount)}</td>
               </tr>
             ))}
-            <tr className="inv-balance"><td colSpan={3}>{t.balance > 0 ? 'Balance due' : 'Balance'}</td><td className="num">{formatLKR(Math.max(0, t.balance))}</td></tr>
+            <tr className="inv-balance"><td colSpan={3}>{t.balance > 0 ? 'Balance due' : t.balance < 0 ? 'Refund due to you' : 'Balance'}</td><td className="num">{formatLKR(Math.abs(t.balance))}</td></tr>
           </tfoot>
         </table>
       )}

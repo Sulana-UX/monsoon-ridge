@@ -36,9 +36,13 @@ export function nightlyRates(base, dates, rules = DEFAULT_RULES) {
   })
 }
 
-/** Full price for a stay. promo = { code, percent } or null */
-export function quoteStay(base, dates, rules, promo = null) {
-  const nightly = nightlyRates(base, dates, rules)
+/**
+ * Full price for a stay. promo = { code, percent } or null.
+ * kept = Map(date → night) of nights already sold at an earlier price (changing a booking):
+ * those nights keep their old rate, only new nights use today's rules.
+ */
+export function quoteStay(base, dates, rules, promo = null, kept = null) {
+  const nightly = nightlyRates(base, dates, rules).map((n) => kept?.get(n.date) ?? n)
   const rooms = nightly.reduce((sum, n) => sum + n.rate, 0)
   const discount = promo ? Math.round((rooms * promo.percent) / 100) : 0
   const subtotal = rooms - discount

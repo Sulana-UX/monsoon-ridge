@@ -2,16 +2,17 @@ import { useState } from 'react'
 import { Link, useOutletContext, useParams } from 'react-router-dom'
 import {
   ChevronLeft, Printer, Mail, Phone, Globe, Clock, Users, CalendarDays, BedDouble, CreditCard,
-  MessageSquare, StickyNote, Trash2, Send, CheckCircle2, XCircle, LogIn, LogOut, UserX, PlusCircle, MailCheck, MailWarning, History, DoorOpen, Star, FileCheck2,
+  MessageSquare, StickyNote, Trash2, Send, CheckCircle2, XCircle, LogIn, LogOut, UserX, PlusCircle, MailCheck, MailWarning, History, DoorOpen, Star, FileCheck2, CalendarClock,
 } from 'lucide-react'
 import { useActivityFor, useBookingNotes } from '../../lib/bookings'
 import { api, friendlyError } from '../../lib/firebase'
 import { statusClass, statusLabel, guestName } from '../../lib/status'
-import { prettyDate } from '../../utils'
+import { prettyDate, formatLKR } from '../../utils'
 import { Person } from './Avatar'
 import FrontDeskButtons, { UnitSelect } from './FrontDesk'
 import { useDialog } from '../../components/Dialog'
 import Folio from './Folio'
+import ChangeStay from '../../components/ChangeStay'
 
 const when = (d) => (d ? d.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '')
 
@@ -21,6 +22,8 @@ export default function BookingDetails() {
   const b = bookings.find((x) => x.ref === ref)
   const dialog = useDialog()
   const [mailBusy, setMailBusy] = useState(false)
+  const [changing, setChanging] = useState(false)
+  const [changeMsg, setChangeMsg] = useState('')
   const [mailMsg, setMailMsg] = useState(null)
 
   if (!b) {
@@ -45,6 +48,7 @@ export default function BookingDetails() {
     b.checkedOutAt && { icon: LogOut, label: b.checkOutActual && b.checkOutActual < b.checkOut ? `Checked out early (${prettyDate(b.checkOutActual)})` : 'Checked out', at: b.checkedOutAt },
     b.noShowAt && { icon: UserX, label: 'Marked as no-show', at: b.noShowAt },
     b.cancelledAt && { icon: XCircle, label: `Cancelled by ${b.cancelledBy || 'guest'}`, at: b.cancelledAt },
+    ...(b.changes || []).map((c) => ({ icon: CalendarClock, label: `Changed by ${c.role === 'guest' ? 'guest' : 'hotel'}: ${prettyDate(c.from.checkIn)} → ${prettyDate(c.from.checkOut)}${c.from.roomId !== c.to.roomId ? `, ${c.from.roomName}` : ''} became ${prettyDate(c.to.checkIn)} → ${prettyDate(c.to.checkOut)}${c.from.roomId !== c.to.roomId ? `, ${c.to.roomName}` : ''}`, at: c.at?.toDate?.() ?? c.at, by: c.by })),
     b.invoice?.number && { icon: FileCheck2, label: `Invoice ${b.invoice.number} issued`, at: b.invoice.issuedAt?.toDate?.() ?? b.invoice.issuedAt, by: b.invoice.issuedBy },
     b.review && { icon: Star, label: `Guest left a ${b.review.rating}★ review`, at: b.review.at?.toDate?.() ?? b.review.at },
     ...['confirmation', 'cancellation', 'review', 'invoice'].map((k) => {
@@ -105,10 +109,18 @@ export default function BookingDetails() {
 
       <div className="bd-actionbar no-print">
         <FrontDeskButtons booking={b} />
+        {(b.status === 'Confirmed' || b.status === 'CheckedIn') && !changing && (
+          <button className="fd-btn fd-btn--ghost" onClick={() => { setChanging(true); setChangeMsg('') }}><CalendarClock size={16} /> {b.status === 'CheckedIn' ? 'Extend / shorten stay' : 'Change booking'}</button>
+        )}
         {b.status === 'Confirmed' && (
           <button className="fd-btn fd-btn--ghost bd-cancel" onClick={cancel}><XCircle size={16} /> Cancel booking</button>
         )}
       </div>
+      {changeMsg && <p className="auth-msg no-print" role="status">{changeMsg}</p>}
+      {changing && (
+        <ChangeStay booking={b} staff onClose={() => setChanging(false)}
+          onDone={(r) => { setChanging(false); setChangeMsg(`Booking updated: new total ${formatLKR(r.total)}.${r.unitNote ? ` ${r.unitNote}` : ''}${b.guest?.email ? ' The guest has been emailed.' : ''}`) }} />
+      )}
 
       <div className="admin-grid">
         <section className="admin-card admin-card--7">

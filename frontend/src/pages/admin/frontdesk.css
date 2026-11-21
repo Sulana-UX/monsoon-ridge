@@ -450,3 +450,6 @@
   .folio-form-row, .folio-form-row:has(.ff-method) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .folio-form .ff-desc { grid-column: 1 / -1; }
 }
+
+.folio-balance.is-refund { background: #eef4f7; color: #2f5f75; }
+.booking-details .change-stay { margin-bottom: 18px; box-shadow: none; }

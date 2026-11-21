@@ -1102,3 +1102,43 @@ button.nav-link { background: none; border: none; color: inherit; text-align: le
 }
 
 .bi-invoice { display: inline-flex; align-items: center; gap: 5px; font-size: .85rem; }
+
+/* ---------- Change a booking ---------- */
+.booking-wrap { display: grid; gap: 0; }
+.booking-wrap .change-stay { margin-top: -8px; border-top-left-radius: 0; border-top-right-radius: 0; }
+.bi-change { display: inline-flex; align-items: center; gap: 5px; font-size: .85rem; }
+.change-stay { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--shadow); display: grid; gap: 16px; }
+.change-stay header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.change-stay h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1.15rem; }
+.change-stay h3 svg { color: var(--gold-2); }
+.cs-grid { display: grid; grid-template-columns: 1fr 1fr 2.4fr .7fr; gap: 12px; }
+.cs-grid label { display: grid; gap: 5px; min-width: 0; font-size: .8rem; font-weight: 600; color: var(--muted); }
+.cs-grid input, .cs-grid select { width: 100%; min-width: 0; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; font: inherit; font-size: .92rem; background: #fff; color: var(--ink); outline: none; }
+.cs-grid input:focus, .cs-grid select:focus { border-color: var(--gold); }
+.cs-grid input:disabled, .cs-grid select:disabled { background: var(--cream); color: var(--muted); }
+.cs-result { min-height: 44px; display: grid; gap: 8px; }
+.cs-result > p { margin: 0; }
+.cs-checking { display: inline-flex; align-items: center; gap: 8px; }
+.cs-compare { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: center; }
+.cs-compare > div { display: grid; gap: 2px; padding: 12px 14px; border-radius: 12px; background: var(--cream); min-width: 0; }
+.cs-compare > div.cs-new { background: var(--gold-soft); }
+.cs-compare small { font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; }
+.cs-compare strong { color: var(--ink); font-size: .95rem; }
+.cs-compare span { font-size: .82rem; color: var(--muted); overflow-wrap: anywhere; }
+.cs-compare .cs-price { font-size: 1rem; font-weight: 700; color: var(--ink); margin-top: 4px; }
+.cs-arrow { color: var(--gold-2); }
+.cs-diff { font-weight: 700; color: var(--ink); }
+.cs-diff.is-more { color: #9a4a17; }
+.cs-diff.is-less { color: var(--ok); }
+.cs-diff small { font-weight: 400; color: var(--muted); }
+.cs-note { display: flex; align-items: flex-start; gap: 6px; font-size: .85rem; color: var(--ink); background: #eef4f7; border-radius: 10px; padding: 8px 12px; }
+.cs-note svg { flex: none; margin-top: 2px; color: #3b6f86; }
+.cs-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.cs-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 720px) {
+  .cs-grid { grid-template-columns: 1fr 1fr; }
+  .cs-grid .cs-room { grid-column: 1 / -1; }
+  .cs-compare { grid-template-columns: minmax(0, 1fr); }
+  .cs-arrow { transform: rotate(90deg); justify-self: center; }
+  .change-stay { padding: 16px; }
+}

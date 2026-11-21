@@ -77,6 +77,9 @@ export const api = {
   createBooking: (booking) => call('/api/bookings', booking),
   cancelBooking: ({ ref }) => call(`/api/bookings/${encodeURIComponent(ref)}/cancel`),
   syncAdminClaim: () => call('/api/me/sync-admin'),
+  // change dates / room / guests. staff = dashboard (any booking); otherwise the guest's own
+  previewChange: (ref, changes, staff = false) => call(`/api${staff ? '/admin' : ''}/bookings/${encodeURIComponent(ref)}/change/preview`, changes),
+  changeBooking: (ref, changes, staff = false) => call(`/api${staff ? '/admin' : ''}/bookings/${encodeURIComponent(ref)}/change`, changes),
   // staff only (the server checks the admin role)
   createRoom: (room) => call('/api/admin/rooms', room),
   updateRoom: (id, room) => call(`/api/admin/rooms/${encodeURIComponent(id)}`, room, 'PUT'),
