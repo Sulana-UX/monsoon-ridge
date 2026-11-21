@@ -14,7 +14,8 @@ import { ApiError } from './errors.js'
 import { parseRef, hotelToday } from './validate.js'
 import { parseReview, publicName, reviewProblem, applyRating, newToken, hashToken, tokenMatches, parseReply } from './reviewRules.js'
 import { sendMail } from './mailer.js'
-import { reviewRequest } from './emailTemplates.js'
+import { reviewRequest, checkoutEmail } from './emailTemplates.js'
+import { folioTotals } from './folioRules.js'
 import { logActivity } from './activity.js'
 
 const bookingDoc = (ref) => db.collection('bookings').doc(ref)
@@ -29,7 +30,10 @@ function checkAccess(b, { token, user }) {
   throw new ApiError('permission-denied', 'This review link is not valid. Please use the link in your email, or sign in with the account you booked with.')
 }
 
-/** Email the guest a private review link (after check-out, or when staff send it again). */
+/**
+ * Email the guest a private review link. At check-out (no staff) it's the combined
+ * "thank you + your receipt + how was your stay?" email; staff can resend just the review request.
+ */
 export async function sendReviewInvite(refParam, { staff } = {}) {
   const ref = parseRef(refParam)
   const snap = await bookingDoc(ref).get()
@@ -44,8 +48,10 @@ export async function sendReviewInvite(refParam, { staff } = {}) {
   const token = newToken()
   await bookingDoc(ref).update({ reviewTokenHash: hashToken(token) })
   const link = `${site()}/review/${ref}?t=${token}`
-  const result = await sendMail({ to: [{ email: b.guest.email, name: [b.guest.firstName, b.guest.lastName].filter(Boolean).join(' ') }], ...reviewRequest(b, link) })
-  await bookingDoc(ref).update({ 'emails.review': { status: result.status, at: FieldValue.serverTimestamp(), ...(result.error && { error: result.error.slice(0, 200) }) } })
+  const content = staff ? reviewRequest(b, link) : checkoutEmail(b, folioTotals(b), link)
+  const result = await sendMail({ to: [{ email: b.guest.email, name: [b.guest.firstName, b.guest.lastName].filter(Boolean).join(' ') }], ...content })
+  const record = { status: result.status, at: FieldValue.serverTimestamp(), ...(result.error && { error: result.error.slice(0, 200) }) }
+  await bookingDoc(ref).update({ 'emails.review': record, ...(!staff && { 'emails.invoice': record }) })
   if (staff) {
     if (result.status !== 'sent') throw new ApiError('unavailable', result.status === 'skipped' ? 'Email is not set up on the server (BREVO_API_KEY / MAIL_FROM).' : `The email wasn't sent: ${result.error}`)
     await logActivity(staff, { action: 'review.invite_sent', target: { type: 'booking', id: ref, label: ref }, summary: `Sent a review request to ${b.guest.firstName ?? 'the guest'}` })

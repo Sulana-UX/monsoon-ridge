@@ -3,7 +3,8 @@ import { useOutletContext } from 'react-router-dom'
 import { LogIn, LogOut, UserX, Undo2, DoorOpen, X } from 'lucide-react'
 import { api, friendlyError } from '../../lib/firebase'
 import { unitOptions, typeHasUnits, HK_LABEL } from '../../lib/units'
-import { today } from '../../utils'
+import { today, formatLKR } from '../../utils'
+import { folioTotals } from '../../lib/folio'
 import { useDialog } from '../../components/Dialog'
 
 /** Which front-desk actions make sense for this booking today (the server re-checks). */
@@ -18,10 +19,11 @@ export function actionsFor(b, t = today()) {
 /** Confirmation question for actions that free rooms; null = no question. */
 function confirmText(action, b, t) {
   if (action === 'no-show') return 'Mark this guest as a no-show? Their remaining nights will be released for sale.'
-  if (action === 'check-out' && b.checkOut > t) {
-    return `${b.guest?.firstName ?? 'The guest'} is due to leave on ${b.checkOut}. Check out early? The unused nights will be released for sale.`
-  }
-  return null
+  if (action !== 'check-out') return null
+  const due = folioTotals(b).balance
+  const owes = due > 0 ? `${b.guest?.firstName ?? 'The guest'} still owes ${formatLKR(due)} on the bill. ` : ''
+  if (b.checkOut > t) return `${owes}${b.guest?.firstName ?? 'The guest'} is due to leave on ${b.checkOut}. Check out early? The unused nights will be released for sale.`
+  return owes ? `${owes}Check out anyway? You can still take the payment afterwards.` : null
 }
 
 const META = {
@@ -61,7 +63,7 @@ export default function FrontDeskButtons({ booking, only, compact = false, onDon
 
   const run = async (action, extra) => {
     const q = confirmText(action, booking, t)
-    if (q && !(await dialog.confirm({ title: action === 'no-show' ? 'Mark as no-show?' : 'Check out early?', message: q, confirmLabel: action === 'no-show' ? 'Mark no-show' : 'Check out now', danger: action === 'no-show' }))) return
+    if (q && !(await dialog.confirm({ title: action === 'no-show' ? 'Mark as no-show?' : booking.checkOut > t ? 'Check out early?' : 'Balance not paid', message: q, confirmLabel: action === 'no-show' ? 'Mark no-show' : 'Check out now', danger: action === 'no-show' }))) return
     setBusy(action)
     setErr('')
     try {

@@ -2,16 +2,16 @@ import { useState } from 'react'
 import { Link, useOutletContext, useParams } from 'react-router-dom'
 import {
   ChevronLeft, Printer, Mail, Phone, Globe, Clock, Users, CalendarDays, BedDouble, CreditCard,
-  MessageSquare, StickyNote, Trash2, Send, CheckCircle2, XCircle, LogIn, LogOut, UserX, PlusCircle, MailCheck, MailWarning, History, DoorOpen, Star,
+  MessageSquare, StickyNote, Trash2, Send, CheckCircle2, XCircle, LogIn, LogOut, UserX, PlusCircle, MailCheck, MailWarning, History, DoorOpen, Star, FileCheck2,
 } from 'lucide-react'
 import { useActivityFor, useBookingNotes } from '../../lib/bookings'
 import { api, friendlyError } from '../../lib/firebase'
 import { statusClass, statusLabel, guestName } from '../../lib/status'
 import { prettyDate } from '../../utils'
 import { Person } from './Avatar'
-import PriceLines from '../../components/PriceLines'
 import FrontDeskButtons, { UnitSelect } from './FrontDesk'
 import { useDialog } from '../../components/Dialog'
+import Folio from './Folio'
 
 const when = (d) => (d ? d.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '')
 
@@ -45,11 +45,12 @@ export default function BookingDetails() {
     b.checkedOutAt && { icon: LogOut, label: b.checkOutActual && b.checkOutActual < b.checkOut ? `Checked out early (${prettyDate(b.checkOutActual)})` : 'Checked out', at: b.checkedOutAt },
     b.noShowAt && { icon: UserX, label: 'Marked as no-show', at: b.noShowAt },
     b.cancelledAt && { icon: XCircle, label: `Cancelled by ${b.cancelledBy || 'guest'}`, at: b.cancelledAt },
+    b.invoice?.number && { icon: FileCheck2, label: `Invoice ${b.invoice.number} issued`, at: b.invoice.issuedAt?.toDate?.() ?? b.invoice.issuedAt, by: b.invoice.issuedBy },
     b.review && { icon: Star, label: `Guest left a ${b.review.rating}★ review`, at: b.review.at?.toDate?.() ?? b.review.at },
-    ...['confirmation', 'cancellation', 'review'].map((k) => {
+    ...['confirmation', 'cancellation', 'review', 'invoice'].map((k) => {
       const e = b.emails?.[k]
       if (!e || e.status === 'skipped') return null
-      return { icon: e.status === 'sent' ? MailCheck : MailWarning, label: `${{ confirmation: 'Confirmation', cancellation: 'Cancellation', review: 'Review request' }[k]} email ${e.status === 'sent' ? 'sent' : 'failed'}`, at: e.at?.toDate?.() ?? e.at, by: e.status === 'sent' ? b.guest?.email : e.error }
+      return { icon: e.status === 'sent' ? MailCheck : MailWarning, label: `${{ confirmation: 'Confirmation', cancellation: 'Cancellation', review: 'Review request', invoice: 'Invoice' }[k]} email ${e.status === 'sent' ? 'sent' : 'failed'}`, at: e.at?.toDate?.() ?? e.at, by: e.status === 'sent' ? b.guest?.email : e.error }
     }),
   ].filter(Boolean).sort((x, y) => (x.at?.getTime?.() ?? 0) - (y.at?.getTime?.() ?? 0))
 
@@ -142,11 +143,7 @@ export default function BookingDetails() {
           </ul>
         </section>
 
-        <section className="admin-card admin-card--7">
-          <h3 className="bd-title">Price</h3>
-          <PriceLines price={p} className="price-lines bd-price" />
-          <p className="muted small">Price locked at the time of booking.</p>
-        </section>
+        <Folio booking={b} price={p} />
 
         <section className="admin-card admin-card--5">
           <h3 className="bd-title">History</h3>

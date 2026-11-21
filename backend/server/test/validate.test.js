@@ -377,3 +377,45 @@ test('reviews: link tokens are random and only the hash is compared', () => {
   assert.equal(parseReply({ text: '' }), '')
   assert.throws(() => parseReply({}))
 })
+
+import { parseCharge, parsePayment, folioTotals, folioProblem, invoiceNumber, receiptNumber } from '../src/folioRules.js'
+import { invoiceEmail, checkoutEmail } from '../src/emailTemplates.js'
+
+test('bill: charges are checked and priced', () => {
+  assert.deepEqual(parseCharge({ description: '  Dinner   for two ', qty: '2', unitPrice: '4,500', by: 'x' }), { description: 'Dinner for two', qty: 2, unitPrice: 4500, amount: 9000 })
+  assert.equal(parseCharge({ description: 'Spa', unitPrice: 6000.4 }).amount, 6000)
+  for (const bad of [{ description: 'x', unitPrice: 10 }, { description: 'Spa', unitPrice: 0 }, { description: 'Spa', unitPrice: -5 }, { description: 'Spa', unitPrice: 'abc' },
+    { description: 'Spa', unitPrice: 10, qty: 0 }, { description: 'Spa', unitPrice: 10, qty: 1.5 }, { description: 'Spa', unitPrice: 1e9 }]) {
+    assert.throws(() => parseCharge(bad), undefined, JSON.stringify(bad))
+  }
+})
+
+test('bill: payments need an amount and a method', () => {
+  assert.deepEqual(parsePayment({ amount: '10000', method: 'cash', note: ' front desk ' }), { amount: 10000, method: 'cash', note: 'front desk' })
+  assert.throws(() => parsePayment({ amount: 100, method: 'bitcoin' }))
+  assert.throws(() => parsePayment({ amount: 0, method: 'card' }))
+  assert.throws(() => parsePayment({ amount: 100, method: 'toString' }))
+})
+
+test('bill: totals and balance', () => {
+  const b = { total: 50000, charges: [{ amount: 9000 }, { amount: 6000 }], payments: [{ amount: 20000 }, { amount: 5000 }] }
+  assert.deepEqual(folioTotals(b), { room: 50000, extras: 15000, total: 65000, paid: 25000, balance: 40000 })
+  assert.deepEqual(folioTotals({ total: 1000 }), { room: 1000, extras: 0, total: 1000, paid: 0, balance: 1000 })
+  assert.match(folioProblem({ status: 'Cancelled' }), /cancelled/)
+  assert.equal(folioProblem({ status: 'CheckedOut' }), null)
+  assert.equal(invoiceNumber('2026', 7), 'INV-2026-00007')
+  assert.equal(receiptNumber('2026', 123), 'RCT-2026-00123')
+})
+
+test('bill: invoice emails escape what guests and staff typed', () => {
+  const b = { ref: 'MRR-ABCDEFGH', roomName: 'Garden', nights: 2, checkIn: '2026-05-01', checkOut: '2026-05-03', total: 1000, price: { rooms: 800, service: 80, tax: 120 },
+    guest: { firstName: '<b>Kasun</b>', lastName: 'P', email: 'k@example.com' }, charges: [{ description: '<script>x</script>', qty: 1, amount: 500 }], payments: [{ amount: 1500, method: 'cash', receipt: 'RCT-2026-00001' }], invoice: { number: 'INV-2026-00001' } }
+  const t = folioTotals(b)
+  const e = invoiceEmail(b, t)
+  assert.ok(!e.html.includes('<script>') && e.html.includes('&lt;script&gt;') && !e.html.includes('<b>Kasun'))
+  assert.match(e.html, /Paid in full/)
+  assert.match(e.subject, /INV-2026-00001/)
+  const c = checkoutEmail(b, t, 'https://x.test/review/MRR-ABCDEFGH?t=abc')
+  assert.match(c.html, /How was your stay/)
+  assert.match(c.html, /r=5/)
+})

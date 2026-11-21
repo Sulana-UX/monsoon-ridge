@@ -200,3 +200,72 @@ export function reviewRequest(b, link) {
   const text = `Hi ${b.guest?.firstName || 'there'},\n\nThank you for staying in the ${b.roomName}. Would you tell us how it went?\n\nWrite a review: ${link}\n\nThis link is just for you (booking ${b.ref}).`
   return { subject, html: layout({ preheader: 'Tell us about your stay: it takes a minute', title: subject, body }), text }
 }
+
+/* ---------- invoice / receipt ---------- */
+
+const METHOD = { cash: 'Cash', card: 'Card', bank: 'Bank transfer', other: 'Other' }
+
+/** The bill as an email table: room, extras, payments, balance. */
+function invoiceTable(b, t) {
+  const pr = b.price || {}
+  const line = (label, amount, opts = {}) =>
+    `<tr><td style="padding:7px 0;border-bottom:1px solid ${C.line};${opts.muted ? `color:${C.muted};` : ''}">${label}</td><td align="right" style="padding:7px 0;border-bottom:1px solid ${C.line};white-space:nowrap;${opts.bold ? 'font-weight:bold;font-size:16px;' : ''}${opts.muted ? `color:${C.muted};` : ''}">${amount}</td></tr>`
+  const rowsHtml = [
+    line(`${esc(b.roomName)}, ${b.nights} night${b.nights === 1 ? '' : 's'}<br><span style="font-size:12px;color:${C.muted}">${esc(day(b.checkIn))} → ${esc(day(b.checkOutActual || b.checkOut))}</span>`, lkr(pr.rooms ?? pr.subtotal ?? b.total)),
+    pr.discount > 0 ? line(`Promo ${esc(pr.promo?.code || '')}`, `− ${lkr(pr.discount)}`, { muted: true }) : '',
+    pr.service ? line('Service charge (10%)', lkr(pr.service), { muted: true }) : '',
+    pr.tax ? line('Taxes (8%)', lkr(pr.tax), { muted: true }) : '',
+    ...(b.charges || []).map((c) => line(`${esc(c.description)}${c.qty > 1 ? ` × ${c.qty}` : ''}`, lkr(c.amount))),
+    line('<strong>Total</strong>', lkr(t.total), { bold: true }),
+    ...(b.payments || []).map((p) => line(`Paid by ${METHOD[p.method]?.toLowerCase() || 'payment'} · ${esc(p.receipt || '')}`, `− ${lkr(p.amount)}`, { muted: true })),
+    line(`<strong>${t.balance > 0 ? 'Balance due' : 'Balance'}</strong>`, t.balance > 0 ? lkr(t.balance) : `${lkr(0)} · Paid in full`, { bold: true }),
+  ].join('')
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 18px;font-size:14px">${rowsHtml}</table>`
+}
+
+const invoiceText = (b, t) =>
+  [`${b.roomName}, ${b.nights} night(s): ${lkr(b.total)}`, ...(b.charges || []).map((c) => `${c.description}${c.qty > 1 ? ` x ${c.qty}` : ''}: ${lkr(c.amount)}`),
+    `Total: ${lkr(t.total)}`, ...(b.payments || []).map((p) => `Paid (${METHOD[p.method] || 'payment'}, ${p.receipt}): -${lkr(p.amount)}`),
+    t.balance > 0 ? `Balance due: ${lkr(t.balance)}` : 'Paid in full'].join('\n')
+
+const invoiceLink = (b) => (b.uid ? `${site()}/invoice/${b.ref}` : '')
+
+/** Sent by staff from the booking page. */
+export function invoiceEmail(b, t) {
+  const number = b.invoice?.number || b.ref
+  const subject = `Your invoice ${number} from ${HOTEL.short}`
+  const body = [
+    h1(t.balance > 0 ? 'Your invoice' : 'Your receipt'),
+    p(`Hi ${esc(b.guest?.firstName || 'there')}, here is the bill for your stay. Keep this email for your records.`),
+    rows([['Invoice', esc(number)], ['Booking', esc(b.ref)], ['Guest', esc(guestName(b))]]),
+    invoiceTable(b, t),
+    invoiceLink(b) ? `<p style="margin:0 0 14px">${button(invoiceLink(b), 'View or print the invoice')}</p>` : '',
+    p(`<span style="font-size:13px;color:${C.muted}">Questions about this bill? Call ${esc(HOTEL.phone)} or reply to this email.</span>`),
+  ].join('')
+  const text = `Invoice ${number} (booking ${b.ref})\n\n${invoiceText(b, t)}\n\n${invoiceLink(b)}`
+  return { subject, html: layout({ preheader: `${t.balance > 0 ? `Balance due ${lkr(t.balance)}` : 'Paid in full'} · ${number}`, title: subject, body }), text }
+}
+
+/** At check-out: thank you + the bill + "How was your stay?" stars, in one email. */
+export function checkoutEmail(b, t, reviewLink) {
+  const name = esc(b.guest?.firstName || 'there')
+  const subject = `Thank you for staying at ${HOTEL.short}`
+  const stars = [1, 2, 3, 4, 5]
+    .map((n) => `<a href="${esc(reviewLink)}&amp;r=${n}" style="text-decoration:none;font-size:30px;color:${C.gold};padding:0 3px" title="${n} star${n > 1 ? 's' : ''}">&#9733;</a>`)
+    .join('')
+  const body = [
+    h1('Thank you for staying with us'),
+    p(`Hi ${name}, we hope you enjoyed your time in the ${esc(b.roomName)}. Safe travels!`),
+    `<div style="background:${C.cream};border-radius:12px;padding:16px 18px;margin:18px 0;text-align:center">
+      <div style="font-family:Georgia,serif;font-size:18px;font-weight:bold;margin-bottom:4px">How was your stay?</div>
+      <div style="font-size:13px;color:${C.muted};margin-bottom:6px">Tap a star. It takes a minute and helps other travellers.</div>
+      <div>${stars}</div>
+    </div>`,
+    `<h2 style="font-family:Georgia,serif;font-size:18px;margin:22px 0 4px">${t.balance > 0 ? 'Your invoice' : 'Your receipt'}${b.invoice?.number ? ` <span style="font-size:13px;color:${C.muted};font-family:Arial,sans-serif;font-weight:normal">${esc(b.invoice.number)}</span>` : ''}</h2>`,
+    invoiceTable(b, t),
+    invoiceLink(b) ? `<p style="margin:0 0 14px">${button(invoiceLink(b), 'View or print the invoice')}</p>` : '',
+    p(`<span style="font-size:13px;color:${C.muted}">The review link is just for you (booking ${esc(b.ref)}). Your first name and last initial are shown with your review, never your email.</span>`),
+  ].join('')
+  const text = `Thank you for staying in the ${b.roomName}, ${b.guest?.firstName || ''}!\n\nHow was your stay? ${reviewLink}\n\nYour bill${b.invoice?.number ? ` (${b.invoice.number})` : ''}:\n${invoiceText(b, t)}\n\n${invoiceLink(b)}`
+  return { subject, html: layout({ preheader: 'Your receipt, and how was your stay?', title: subject, body }), text }
+}

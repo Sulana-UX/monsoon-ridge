@@ -108,6 +108,13 @@ export const api = {
   setMessageStatus: (id, status) => call(`/api/admin/messages/${encodeURIComponent(id)}`, { status }, 'PUT'),
   replyMessage: (id, text) => call(`/api/admin/messages/${encodeURIComponent(id)}/reply`, { text }),
   deleteMessage: (id) => call(`/api/admin/messages/${encodeURIComponent(id)}`, null, 'DELETE'),
+  // guest bill: extra charges, payments, invoice (staff)
+  addCharge: (ref, charge) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/charges`, charge),
+  removeCharge: (ref, id) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/charges/${encodeURIComponent(id)}`, null, 'DELETE'),
+  addPayment: (ref, payment) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/payments`, payment),
+  removePayment: (ref, id) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/payments/${encodeURIComponent(id)}`, null, 'DELETE'),
+  issueInvoice: (ref) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/invoice`),
+  emailInvoice: (ref) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/invoice/email`),
   // guest reviews (staff)
   sendReviewInvite: (ref) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/review-invite`),
   setReviewStatus: (ref, status) => call(`/api/admin/reviews/${encodeURIComponent(ref)}`, { status }, 'PUT'),

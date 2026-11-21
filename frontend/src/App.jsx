@@ -13,6 +13,7 @@ import Contact from './pages/Contact'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
 import Review from './pages/Review'
+import Invoice from './pages/Invoice'
 import AdminLayout from './pages/admin/AdminLayout'
 import Overview from './pages/admin/Overview'
 import AdminBookings from './pages/admin/Bookings'
@@ -46,7 +47,7 @@ export default function App() {
   const { isAdmin: adminUser, loading } = useAuth()
   const isAdmin = pathname.startsWith('/admin')
   // Sign-in pages are full-screen: no menu bar or footer
-  const bare = isAdmin || pathname === '/login' || pathname === '/register'
+  const bare = isAdmin || pathname === '/login' || pathname === '/register' || pathname.startsWith('/invoice/')
 
   // Staff accounts only use the dashboard: any website page sends them back to it
   if (!loading && adminUser && !isAdmin) return <Navigate to="/admin" replace />
@@ -86,6 +87,7 @@ export default function App() {
           <Route path="/register" element={<Login mode="register" />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/review/:ref" element={<Review />} />
+          <Route path="/invoice/:ref" element={<RequireAuth verified={false}><Invoice /></RequireAuth>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

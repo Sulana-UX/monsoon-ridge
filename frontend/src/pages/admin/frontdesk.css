@@ -413,3 +413,40 @@
 @media (max-width: 560px) {
   .rv-admin-ref, .rv-admin-hide { margin-left: 0; }
 }
+
+/* Bill (folio) on the booking page */
+.folio { display: grid; gap: 14px; align-content: start; }
+.folio-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.folio-head .bd-title { margin: 0; }
+.folio-head-actions { display: flex; align-items: center; gap: 10px; }
+.folio-head-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
+.folio-inv { font-size: .8rem; color: var(--a-muted); }
+.folio-block { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--a-line); }
+.folio-block h4 { display: flex; align-items: center; gap: 6px; margin: 0; font-size: .85rem; color: var(--a-ink); }
+.folio-block h4 svg { color: var(--a-gold); }
+.folio-block > p { margin: 0; }
+.folio-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.folio-list li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--a-line); }
+.folio-list li:last-child { border-bottom: 0; }
+.folio-list li > span:first-child { flex: 1; min-width: 0; font-size: .9rem; color: var(--a-ink); }
+.folio-list small { display: block; color: var(--a-muted); font-size: .76rem; overflow-wrap: anywhere; }
+.folio-amt { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; font-size: .9rem; color: var(--a-ink); }
+.folio-sum > div { display: flex; justify-content: space-between; align-items: baseline; font-size: .95rem; padding: 10px 0 0; border-top: 1px solid var(--a-ink); }
+.folio-balance { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-radius: 12px; font-weight: 600; }
+.folio-balance strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.folio-balance.is-due { background: #fdf0e6; color: #9a4a17; }
+.folio-balance.is-paid { background: #e6f5ee; color: #14724c; }
+.folio-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.folio-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
+.folio-form { display: grid; gap: 10px; padding: 14px; border-radius: 12px; background: #faf7f1; border: 1px solid var(--a-line); }
+.folio-form > p { margin: 0; }
+.folio-form-row { display: grid; grid-template-columns: minmax(0, 2fr) 70px minmax(0, 1.2fr); gap: 10px; }
+.folio-form label { display: grid; gap: 4px; font-size: .78rem; font-weight: 600; color: var(--a-muted); min-width: 0; }
+.folio-form label em { font-weight: 400; font-style: normal; }
+.folio-form input, .folio-form select { width: 100%; min-width: 0; border: 1px solid var(--a-line); border-radius: 10px; padding: 9px 10px; font: inherit; font-size: .9rem; background: #fff; color: var(--a-ink); outline: none; }
+.folio-form input:focus, .folio-form select:focus { border-color: var(--a-gold); box-shadow: 0 0 0 3px rgba(184, 134, 47, .15); }
+.folio-form-row:has(.ff-method) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr); }
+@media (max-width: 560px) {
+  .folio-form-row, .folio-form-row:has(.ff-method) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .folio-form .ff-desc { grid-column: 1 / -1; }
+}

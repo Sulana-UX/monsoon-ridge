@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarDays, Users, Luggage, ArrowRight, Star } from 'lucide-react'
+import { CalendarDays, Users, Luggage, ArrowRight, Star, FileText } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import { useAuth } from '../context/AuthContext'
 import { useBookings } from '../lib/bookings'
@@ -68,6 +68,9 @@ export default function MyBookings() {
                   <div className="bi-side">
                     <strong>{formatLKR(b.total)}</strong>
                     <small className="muted">{b.nights} night{b.nights > 1 ? 's' : ''}</small>
+                    {b.status !== 'Cancelled' && (
+                      <Link to={`/invoice/${b.ref}`} className="text-btn bi-invoice"><FileText size={14} /> {b.invoice?.number ? 'Invoice' : 'Booking summary'}</Link>
+                    )}
                     {b.status === 'CheckedOut' && (b.review ? (
                       <span className="bi-reviewed"><Star size={14} fill="currentColor" /> You rated {b.review.rating}/5</span>
                     ) : (

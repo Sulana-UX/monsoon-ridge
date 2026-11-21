@@ -18,6 +18,7 @@ import { setRoomNumbers, assignUnit, setHousekeeping } from './units.js'
 import { addStaff, removeStaff, listStaff, setStaffRole, getStaffRole, ROLE_LABEL } from './staff.js'
 import { logActivity, roomChanges, lkr } from './activity.js'
 import { getReviewStay, submitReview, sendReviewInvite, setReviewStatus, replyToReview } from './reviews.js'
+import { addCharge, removeCharge, addPayment, removePayment, issueInvoice, emailInvoice } from './folio.js'
 import { getQuote, savePricingRules, createPromo, updatePromo, deletePromo } from './pricingStore.js'
 
 const origins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',').map((s) => s.trim()).filter(Boolean)
@@ -188,6 +189,13 @@ app.post('/api/admin/bookings/:ref/email', writeLimit, requireUser, requireAdmin
   return r
 }))
 app.put('/api/admin/messages/:id', requireUser, requireAdmin, handle((req) => setMessageStatus(req.user, req.params.id, req.body?.status)))
+// Guest bill: extra charges, payments (voiding one is Admin only), invoice
+app.post('/api/admin/bookings/:ref/charges', writeLimit, requireUser, requireAdmin, handle((req) => addCharge(req.user, req.params.ref, req.body)))
+app.delete('/api/admin/bookings/:ref/charges/:id', writeLimit, requireUser, requireAdmin, handle((req) => removeCharge(req.user, req.params.ref, req.params.id)))
+app.post('/api/admin/bookings/:ref/payments', writeLimit, requireUser, requireAdmin, handle((req) => addPayment(req.user, req.params.ref, req.body)))
+app.delete('/api/admin/bookings/:ref/payments/:id', writeLimit, requireUser, requireAdmin, requireManager, handle((req) => removePayment(req.user, req.params.ref, req.params.id)))
+app.post('/api/admin/bookings/:ref/invoice', writeLimit, requireUser, requireAdmin, handle((req) => issueInvoice(req.user, req.params.ref)))
+app.post('/api/admin/bookings/:ref/invoice/email', writeLimit, requireUser, requireAdmin, handle((req) => emailInvoice(req.user, req.params.ref)))
 app.post('/api/admin/bookings/:ref/review-invite', writeLimit, requireUser, requireAdmin, handle((req) => sendReviewInvite(req.params.ref, { staff: req.user })))
 app.put('/api/admin/reviews/:ref', writeLimit, requireUser, requireAdmin, requireManager, handle((req) => setReviewStatus(req.user, req.params.ref, req.body?.status)))
 app.put('/api/admin/reviews/:ref/reply', writeLimit, requireUser, requireAdmin, handle((req) => replyToReview(req.user, req.params.ref, req.body)))
