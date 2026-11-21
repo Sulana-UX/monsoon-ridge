@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Inbox as InboxIcon, Mail, Phone, Reply, Archive, ArchiveRestore, Trash2, MailOpen, ChevronLeft, Search } from 'lucide-react'
+import { Inbox as InboxIcon, Mail, Phone, Reply, Archive, ArchiveRestore, Trash2, MailOpen, ChevronLeft, Search, Send, CheckCircle2 } from 'lucide-react'
 import { api, friendlyError } from '../../lib/firebase'
 import { Person } from './Avatar'
 import { useDialog } from '../../components/Dialog'
@@ -53,7 +53,7 @@ export default function Inbox() {
         <div>
           <span className="eyebrow">Guests</span>
           <h1>Inbox</h1>
-          <p>Messages sent from the Contact page. Reply goes from your own email app.</p>
+          <p>Messages sent from the Contact page. Type a reply here and it's emailed to the guest straight away.</p>
         </div>
       </div>
 
@@ -112,13 +112,19 @@ export default function Inbox() {
                   </ul>
                 </div>
                 <div className="msg-body">{open.message}</div>
+                {(open.replies || []).length > 0 && (
+                  <ul className="msg-replies">
+                    {open.replies.map((r, i) => (
+                      <li key={i}>
+                        <span className="msg-reply-head"><CheckCircle2 size={14} /> Emailed by {r.by} · {full(r.at?.toDate?.())}</span>
+                        <div>{r.text}</div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <ReplyBox key={open.id} message={open} />
                 {err && <p className="auth-msg auth-msg--err" role="alert">{err}</p>}
                 <div className="msg-actions">
-                  <a className="btn btn-gold btn-sm"
-                    href={`mailto:${open.email}?subject=${encodeURIComponent('Re: ' + (open.subject || 'Your message to Monsoon Ridge'))}&body=${encodeURIComponent(`Dear ${open.name},\n\n\n\nKind regards,\nMonsoon Ridge Jungle Resort & Spa\n\n> ${open.message.split('\n').join('\n> ')}`)}`}
-                    onClick={() => act(() => api.setMessageStatus(open.id, 'replied'))}>
-                    <Reply size={15} /> Reply by email
-                  </a>
                   {open.status !== 'new' && open.status !== 'archived' && (
                     <button className="btn btn-outline btn-sm" onClick={() => { act(() => api.setMessageStatus(open.id, 'new')); setOpenId(null) }}><Mail size={15} /> Mark unread</button>
                   )}
@@ -143,5 +149,45 @@ export default function Inbox() {
         </div>
       )}
     </>
+  )
+}
+
+/** Write a reply; the server emails it (greeting, signature and the guest's message are added). */
+function ReplyBox({ message }) {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState(null)
+  const send = async (e) => {
+    e.preventDefault()
+    if (!text.trim() || busy) return
+    setBusy(true)
+    setMsg(null)
+    try {
+      const { data } = await api.replyMessage(message.id, text.trim())
+      setText('')
+      setMsg({ ok: true, text: `Sent to ${data.sentTo}.` })
+    } catch (e2) {
+      setMsg({ ok: false, text: friendlyError(e2) })
+    }
+    setBusy(false)
+  }
+  return (
+    <form className="msg-reply" onSubmit={send}>
+      <label htmlFor="msg-reply-text"><Reply size={15} /> Reply to {message.name}</label>
+      <div className="msg-reply-box">
+        <span className="msg-reply-greet">Dear {message.name},</span>
+        <textarea id="msg-reply-text" value={text} onChange={(e) => setText(e.target.value)} rows={5} maxLength={5000}
+          placeholder="Write your answer…" disabled={busy}
+          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) send(e) }} />
+        <span className="msg-reply-greet">Kind regards, Monsoon Ridge Jungle Resort &amp; Spa</span>
+      </div>
+      <div className="msg-reply-foot">
+        <small className="muted">Goes to {message.email}. Their message is quoted under your reply. Ctrl+Enter sends.</small>
+        <button type="submit" className="btn btn-gold btn-sm" disabled={busy || !text.trim()}>
+          {busy ? <span className="spinner spinner--sm" /> : <Send size={15} />} Send reply
+        </button>
+      </div>
+      {msg && <p className={`auth-msg ${msg.ok ? '' : 'auth-msg--err'}`} role="status">{msg.text}</p>}
+    </form>
   )
 }

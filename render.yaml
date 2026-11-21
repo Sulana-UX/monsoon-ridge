@@ -32,6 +32,8 @@ services:
         value: Monsoon Ridge
       - key: STAFF_ALERT_EMAILS
         sync: false
+      - key: REPLY_TO_EMAIL
+        sync: false
       - key: SITE_URL
         value: https://monsoon-ridge.web.app
       - key: FIREBASE_SERVICE_ACCOUNT

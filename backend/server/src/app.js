@@ -11,7 +11,7 @@ import { signRoomUpload } from './uploads.js'
 import { getAvailability } from './availability.js'
 import { changeBookingStatus, addNote, deleteNote } from './bookingStatus.js'
 import { db } from './firebase.js'
-import { createMessage, setMessageStatus, deleteMessage } from './messages.js'
+import { createMessage, setMessageStatus, deleteMessage, replyToMessage } from './messages.js'
 import { resendConfirmation } from './notify.js'
 import { sendVerification, sendPasswordReset } from './accountEmails.js'
 import { setRoomNumbers, assignUnit, setHousekeeping } from './units.js'
@@ -169,6 +169,7 @@ app.post('/api/admin/bookings/:ref/email', writeLimit, requireUser, requireAdmin
   return r
 }))
 app.put('/api/admin/messages/:id', requireUser, requireAdmin, handle((req) => setMessageStatus(req.user, req.params.id, req.body?.status)))
+app.post('/api/admin/messages/:id/reply', writeLimit, requireUser, requireAdmin, handle((req) => replyToMessage(req.user, req.params.id, req.body)))
 app.delete('/api/admin/messages/:id', writeLimit, requireUser, requireAdmin, handle((req) => deleteMessage(req.user, req.params.id)))
 
 // Staff management (Admin role; owners in ADMIN_EMAILS can't be removed or demoted here)

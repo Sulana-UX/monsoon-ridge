@@ -376,3 +376,18 @@
   .hk-cycle { font-size: .74rem; padding: 6px 8px; gap: 4px; }
   .hk-tile footer .icon-btn { width: 30px; height: 30px; }
 }
+
+/* Inbox: replies sent from the dashboard */
+.msg-replies { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 10px; }
+.msg-replies li { background: var(--a-gold-soft); border-left: 3px solid var(--a-gold); border-radius: 10px; padding: 10px 14px; }
+.msg-replies li > div { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .92rem; line-height: 1.6; color: var(--a-ink); }
+.msg-reply-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: .78rem; color: var(--a-muted); margin-bottom: 4px; }
+.msg-reply-head svg { color: var(--a-gold-deep); }
+.msg-reply { display: grid; gap: 8px; padding-top: 16px; border-top: 1px solid var(--a-line); margin-bottom: 14px; }
+.msg-reply > label { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: .9rem; color: var(--a-ink); }
+.msg-reply-box { border: 1px solid var(--a-line); border-radius: 12px; padding: 10px 14px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+.msg-reply-box:focus-within { border-color: var(--a-gold); box-shadow: 0 0 0 3px rgba(184, 134, 47, .15); }
+.msg-reply-box textarea { display: block; width: 100%; border: 0; outline: 0; resize: vertical; min-height: 110px; font: inherit; font-size: .95rem; line-height: 1.6; background: transparent; padding: 6px 0; color: var(--a-ink); }
+.msg-reply-greet { display: block; font-size: .85rem; color: var(--a-muted); }
+.msg-reply-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.msg-reply-foot .btn { display: inline-flex; align-items: center; gap: 6px; }

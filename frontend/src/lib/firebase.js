@@ -88,6 +88,7 @@ export const api = {
   // guest communication (staff)
   resendConfirmation: (ref) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/email`),
   setMessageStatus: (id, status) => call(`/api/admin/messages/${encodeURIComponent(id)}`, { status }, 'PUT'),
+  replyMessage: (id, text) => call(`/api/admin/messages/${encodeURIComponent(id)}/reply`, { text }),
   deleteMessage: (id) => call(`/api/admin/messages/${encodeURIComponent(id)}`, null, 'DELETE'),
   // Account emails through the hotel's own sender (Brevo). { status: 'sent' | 'already' | 'skipped' }
   sendVerification: async () => (await call('/api/auth/send-verification')).data,

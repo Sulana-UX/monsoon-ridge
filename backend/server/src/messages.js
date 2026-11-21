@@ -5,11 +5,11 @@
  *   - a hidden "website" field: real people leave it empty, bots fill it in
  *   - length limits on every field; unknown fields are dropped
  */
-import { FieldValue } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { db } from './firebase.js'
 import { ApiError } from './errors.js'
 import { sendMail, staffRecipients } from './mailer.js'
-import { staffNewMessage } from './emailTemplates.js'
+import { staffNewMessage, guestReply } from './emailTemplates.js'
 import { logActivity } from './activity.js'
 
 const bad = (msg) => {
@@ -74,4 +74,33 @@ export async function deleteMessage(staff, id) {
   if (snap.exists) await logActivity(staff, { action: 'inbox.deleted', target: { type: 'message', id, label: snap.get('name') },
     summary: `Deleted a message from ${snap.get('name')} <${snap.get('email')}>: "${snap.get('subject') || 'No subject'}"` })
   return { ok: true }
+}
+
+/** Where the guest's answer to our reply goes: REPLY_TO_EMAIL, else the staff alert address. */
+const replyAddress = () => {
+  const own = (process.env.REPLY_TO_EMAIL || '').trim()
+  const email = own || staffRecipients()[0]?.email
+  return email ? { email, name: process.env.MAIL_FROM_NAME || 'Monsoon Ridge' } : undefined
+}
+
+/** Staff answers a contact message from the dashboard; the email goes out through Brevo. */
+export async function replyToMessage(staff, id, body) {
+  const reply = text(body?.text, 'Reply', { min: 1, max: 5000 })
+  const ref = msgDoc(id)
+  const snap = await ref.get()
+  if (!snap.exists) throw new ApiError('not-found', 'Message not found.')
+  const m = snap.data()
+
+  const r = await sendMail({ to: [{ email: m.email, name: m.name }], replyTo: replyAddress(), ...guestReply(m, reply) })
+  if (r.status !== 'sent') {
+    throw new ApiError('unavailable', r.status === 'skipped' ? 'Email is not set up on the server (BREVO_API_KEY / MAIL_FROM).' : `The email wasn't sent: ${r.error}`)
+  }
+  const entry = { text: reply, by: staff.email ?? 'staff', at: Timestamp.now() }
+  await ref.update({
+    replies: FieldValue.arrayUnion(entry),
+    status: 'replied', statusBy: entry.by, statusAt: FieldValue.serverTimestamp(),
+  })
+  await logActivity(staff, { action: 'inbox.replied', target: { type: 'message', id, label: m.name },
+    summary: `Replied by email to ${m.name} <${m.email}>: "${m.subject || 'No subject'}"` })
+  return { ok: true, sentTo: m.email }
 }

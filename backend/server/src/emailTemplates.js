@@ -163,3 +163,20 @@ export function passwordResetEmail({ link }) {
   const text = `Reset your ${HOTEL.short} password:\n${link}\n\nIf you didn't ask for this, ignore this email.`
   return { subject, html: layout({ preheader: 'Choose a new password', title: subject, body }), text }
 }
+
+/* ---------- staff reply to a contact-form message ---------- */
+
+/** m = the guest's message, reply = what the staff member typed. */
+export function guestReply(m, reply) {
+  const subject = `Re: ${m.subject || 'Your message to ' + HOTEL.short}`
+  const paras = reply.split(/\n{2,}/).map((x) => p(esc(x).replace(/\n/g, '<br>'))).join('')
+  const body = [
+    p(`Dear ${esc(m.name)},`),
+    paras,
+    p(`Kind regards,<br><strong>${esc(HOTEL.name)}</strong><br><span style="color:${C.muted};font-size:13px">${esc(HOTEL.phone)} · <a href="${esc(site())}" style="color:${C.gold}">${esc(site().replace(/^https?:\/\//, ''))}</a></span>`),
+    `<div style="margin-top:22px;border-left:3px solid ${C.line};padding:4px 0 4px 14px;font-size:13px;line-height:1.6;color:${C.muted}">
+      <div style="margin-bottom:6px">Your message:</div><div style="white-space:pre-wrap">${esc(m.message)}</div></div>`,
+  ].join('')
+  const text = `Dear ${m.name},\n\n${reply}\n\nKind regards,\n${HOTEL.name}\n${HOTEL.phone}\n\n> ${m.message.split('\n').join('\n> ')}`
+  return { subject, html: layout({ preheader: reply.slice(0, 90), title: subject, body }), text }
+}
