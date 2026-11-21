@@ -61,6 +61,8 @@ npm test        # backend validation tests
    3. Copy the service URL, e.g. `https://monsoon-ridge-api.onrender.com`.
 3. **Website:** set `VITE_API_URL=<that URL>` in `frontend/.env.local`, then run `npm run deploy`. The site goes live at `https://monsoon-ridge.web.app`.
 
+4. **Google (SEO):** the build writes one page per room with its own title, description and link preview, plus `sitemap.xml` and `robots.txt`. If the site has its own domain, set `VITE_SITE_URL=https://your-domain` in `frontend/.env.local` before building. Then add the site in [Google Search Console](https://search.google.com/search-console) and submit `<site>/sitemap.xml`. Rebuild and deploy after adding or renaming rooms, so the sitemap includes them.
+
 The free Render server sleeps after about 15 minutes idle; the first request after that takes 30–60 seconds. The site pings it when a guest signs in or opens a booking page, to hide most of that delay.
 
 ## Becoming admin

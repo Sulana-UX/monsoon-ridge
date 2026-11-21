@@ -33,6 +33,7 @@ import ManagerOnly from './pages/admin/ManagerOnly'
 import Housekeeping from './pages/admin/Housekeeping'
 import Reviews from './pages/admin/Reviews'
 import RequireAuth from './components/RequireAuth'
+import RouteSeo from './components/RouteSeo'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -55,6 +56,7 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
+      <RouteSeo />
       {!bare && <Navbar />}
       <main>
         <Routes>

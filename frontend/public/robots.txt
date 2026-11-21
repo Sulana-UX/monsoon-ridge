@@ -1,0 +1,13 @@
+# Monsoon Ridge: search engines may list the public pages; account, booking and staff pages are private.
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /my-bookings
+Disallow: /booking/
+Disallow: /confirmation/
+Disallow: /invoice/
+Disallow: /review/
+Disallow: /login
+Disallow: /register
+
+Sitemap: https://monsoon-ridge.web.app/sitemap.xml
