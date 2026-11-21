@@ -20,6 +20,10 @@ function loadCredentials() {
   }
 }
 
-const app = initializeApp({ credential: cert(loadCredentials()) })
+// Local emulators (npm run emulators) need no key: the Admin SDK talks to them directly.
+const emulated = Boolean(process.env.FIRESTORE_EMULATOR_HOST && process.env.FIREBASE_AUTH_EMULATOR_HOST)
+const app = emulated && !process.env.FIREBASE_SERVICE_ACCOUNT && !process.env.GOOGLE_APPLICATION_CREDENTIALS
+  ? initializeApp({ projectId: process.env.GCLOUD_PROJECT || 'monsoon-ridge' })
+  : initializeApp({ credential: cert(loadCredentials()) })
 export const auth = getAuth(app)
 export const db = getFirestore(app)
