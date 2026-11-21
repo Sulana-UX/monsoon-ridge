@@ -475,3 +475,52 @@ test('change: nights already booked keep their price, new nights use today\'s ra
   // old bookings without per-night prices: the flat rate is kept
   assert.equal(keptNights({ checkIn: '2026-06-10', nights: 2, price: { rate: 9000 } }, undefined).get('2026-06-11').rate, 9000)
 })
+
+import { offerFor, parseOffer } from '../src/pricing.js'
+
+test('stay-longer offer: cheapest night free, once per stay', () => {
+  const flat = { seasons: [], weekend: { days: [5, 6], amount: 2000 } }
+  const offer = { minNights: 3, perks: 'Breakfast and a sunset boat ride' }
+  // Thu, Fri, Sat nights: 10000, 12000, 12000 -> Thursday is free
+  const q = quoteStay(10000, ['2026-12-03', '2026-12-04', '2026-12-05'], flat, null, null, offer)
+  assert.equal(q.rooms, 34000)
+  assert.deepEqual(q.offer, { name: 'Stay 3 nights, pay for 2', minNights: 3, perks: offer.perks, night: '2026-12-03', amount: 10000 })
+  assert.equal(q.subtotal, 24000)
+  assert.equal(q.total, 24000 + 2400 + 1920)
+  // too short: no offer
+  assert.equal(quoteStay(10000, ['2026-12-03', '2026-12-04'], flat, null, null, offer).offer, null)
+  // 6 nights still one free night
+  assert.equal(quoteStay(10000, ['2026-12-07', '2026-12-08', '2026-12-09', '2026-12-10', '2026-12-11', '2026-12-12'], flat, null, null, offer).offer.amount, 10000)
+})
+
+test('offer and promo code never add up: the bigger saving wins', () => {
+  const flat = { seasons: [], weekend: { days: [], amount: 0 } }
+  const dates = ['2026-06-01', '2026-06-02', '2026-06-03']
+  const small = quoteStay(10000, dates, flat, { code: 'MONSOON10', percent: 10 }, null, { minNights: 3 })
+  assert.equal(small.offer.amount, 10000)
+  assert.equal(small.promo, null)
+  assert.equal(small.discount, 0)
+  assert.deepEqual(small.promoSkipped, { code: 'MONSOON10', percent: 10 })
+  assert.equal(small.subtotal, 20000)
+  const big = quoteStay(10000, dates, flat, { code: 'BIG50', percent: 50 }, null, { minNights: 3 })
+  assert.equal(big.offer, null)
+  assert.equal(big.offerSkipped, true)
+  assert.equal(big.discount, 15000)
+  assert.equal(big.promo.code, 'BIG50')
+})
+
+test('offer settings: validation and which check-in dates get it', () => {
+  const o = parseOffer({ active: true, minNights: '3', from: '2026-11-01', to: '2027-03-31', perks: ' Breakfast\nand a  boat ride ' }, '2026-11-21')
+  assert.deepEqual(o, { active: true, minNights: 3, from: '2026-11-01', to: '2027-03-31', perks: 'Breakfast and a boat ride' })
+  assert.throws(() => parseOffer({ ...o, minNights: 1 }, '2026-11-21'), /Nights/)
+  assert.throws(() => parseOffer({ ...o, to: '2026-10-01' }, '2026-11-21'), /before the start/)
+  assert.throws(() => parseOffer({ ...o, from: '2026-01-01', to: '2026-02-01' }, '2026-11-21'), /past/)
+  assert.equal(parseOffer({ ...o, active: false, from: '2026-01-01', to: '2026-02-01' }, '2026-11-21').active, false)
+  assert.throws(() => parseOffer({ ...o, perks: 'x'.repeat(121) }, '2026-11-21'), /120/)
+  assert.throws(() => parseOffer({ ...o, active: 'yes' }, '2026-11-21'))
+  assert.deepEqual(offerFor(o, '2026-12-24'), { minNights: 3, perks: 'Breakfast and a boat ride' })
+  assert.equal(offerFor(o, '2026-10-31'), null)
+  assert.equal(offerFor(o, '2027-04-01'), null)
+  assert.equal(offerFor({ ...o, active: false }, '2026-12-24'), null)
+  assert.equal(offerFor(null, '2026-12-24'), null)
+})

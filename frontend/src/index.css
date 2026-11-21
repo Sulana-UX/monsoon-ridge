@@ -429,6 +429,10 @@ input[type='range'] { width: 100%; accent-color: var(--gold-2); }
 .price-nights ul { list-style: none; margin: 8px 0 2px; padding: 8px 0 0 12px; border-left: 2px solid var(--line); display: grid; gap: 6px; font-size: .85rem; }
 .price-nights li { display: flex; justify-content: space-between; gap: 12px; }
 .price-lines .price-discount { color: #1f7a4d; font-weight: 600; }
+.price-lines .price-perks { color: var(--muted, #6b7280); font-size: .82rem; margin-top: -4px; }
+.promo-field .promo-note { color: #8a5a00; }
+.offer-hint { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0; padding: 9px 12px; border-radius: 10px; background: #eef7f1; color: #1f5f3d; font-size: .86rem; line-height: 1.4; }
+.offer-hint svg { flex: none; margin-top: 2px; }
 .promo-field { display: grid; gap: 6px; margin-top: 18px; font-size: .88rem; }
 .promo-field > span { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--ink); }
 .promo-field input { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; font: inherit; letter-spacing: .06em; background: #fff; }

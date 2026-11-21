@@ -98,6 +98,7 @@ export const api = {
   deleteNote: (ref, id) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/notes/${encodeURIComponent(id)}`, null, 'DELETE'),
   // pricing rules & promo codes (staff)
   savePricing: (rules) => call('/api/admin/pricing', rules, 'PUT'),
+  saveOffer: (offer) => call('/api/admin/offer', offer, 'PUT'),
   createPromo: (promo) => call('/api/admin/promos', promo),
   updatePromo: (code, changes) => call(`/api/admin/promos/${encodeURIComponent(code)}`, changes, 'PUT'),
   deletePromo: (code) => call(`/api/admin/promos/${encodeURIComponent(code)}`, null, 'DELETE'),

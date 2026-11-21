@@ -4,7 +4,8 @@
  *
  *   night rate = base price × (1 + season %)  + weekend extra (if that night is a weekend night)
  *   room total = sum of night rates
- *   discount   = promo % of the room total
+ *   discount   = promo % of the room total, or the stay-longer offer (cheapest night free),
+ *                whichever saves more: the two never add up
  *   service 10% and tax 8% are charged on (room total − discount)
  *
  * Rules live in Firestore `settings/pricing` and are edited from the dashboard:
@@ -41,11 +42,30 @@ export function nightlyRates(base, dates, rules = DEFAULT_RULES) {
  * kept = Map(date → night) of nights already sold at an earlier price (changing a booking):
  * those nights keep their old rate, only new nights use today's rules.
  */
-export function quoteStay(base, dates, rules, promo = null, kept = null) {
+export function quoteStay(base, dates, rules, promo = null, kept = null, offer = null) {
   const nightly = nightlyRates(base, dates, rules).map((n) => kept?.get(n.date) ?? n)
   const rooms = nightly.reduce((sum, n) => sum + n.rate, 0)
-  const discount = promo ? Math.round((rooms * promo.percent) / 100) : 0
-  const subtotal = rooms - discount
+
+  // Stay-longer offer: the cheapest night is free, once per stay
+  const freeNight = offer && nightly.length >= offer.minNights
+    ? nightly.reduce((low, n) => (n.rate < low.rate ? n : low))
+    : null
+  let discount = promo ? Math.round((rooms * promo.percent) / 100) : 0
+  let usePromo = promo
+  let useOffer = Boolean(freeNight)
+  let promoSkipped = null
+  // The offer and a promo code don't add up: the guest gets whichever saves more (the offer on a tie)
+  if (freeNight && promo) {
+    if (discount > freeNight.rate) useOffer = false
+    else {
+      promoSkipped = { code: promo.code, percent: promo.percent }
+      usePromo = null
+      discount = 0
+    }
+  }
+  const offerOff = useOffer ? freeNight.rate : 0
+
+  const subtotal = rooms - discount - offerOff
   const service = Math.round(subtotal * SERVICE_RATE)
   const tax = Math.round(subtotal * TAX_RATE)
   return {
@@ -53,13 +73,51 @@ export function quoteStay(base, dates, rules, promo = null, kept = null) {
     nights: dates.length,
     nightly,
     rooms,
-    discount,
-    promo: promo ? { code: promo.code, percent: promo.percent } : null,
+    discount, // promo code only
+    promo: usePromo ? { code: usePromo.code, percent: usePromo.percent } : null,
+    ...(promoSkipped && { promoSkipped }),
+    offer: useOffer
+      ? { name: offerName(offer), minNights: offer.minNights, perks: offer.perks || '', night: freeNight.date, amount: offerOff }
+      : null,
+    ...(freeNight && !useOffer && { offerSkipped: true }),
     subtotal,
     service,
     tax,
     total: subtotal + service + tax,
   }
+}
+
+/* ---------- stay-longer offer ("Stay 3 nights, pay for 2") ----------
+ * settings/offer { active, minNights, from, to, perks }: public, so the home page can show it.
+ * from / to = the check-in dates it is valid for. One night free per stay (the cheapest one).
+ */
+
+export const offerName = (o) => `Stay ${o.minNights} nights, pay for ${o.minNights - 1}`
+
+/** The offer terms a new stay with this check-in date gets, or null. */
+export function offerFor(o, checkIn) {
+  if (!o || o.active !== true || !o.minNights) return null
+  if ((o.from && checkIn < o.from) || (o.to && checkIn > o.to)) return null
+  return { minNights: o.minNights, perks: o.perks || '' }
+}
+
+const CONTROL = /[\u0000-\u001F\u007F]/g
+
+export function parseOffer(data, today) {
+  if (!data || typeof data !== 'object') bad('Missing offer details.')
+  if (typeof data.active !== 'boolean') bad('Choose whether the offer is on or off.')
+  const minNights = int(data.minNights, 'Nights to stay', 2, 14)
+  const date = (v, label) => {
+    if (typeof v !== 'string' || !ISO.test(v) || Number.isNaN(Date.parse(v))) bad(`Choose a valid ${label} date.`)
+    return v
+  }
+  const from = date(data.from, 'start')
+  const to = date(data.to, 'end')
+  if (to < from) bad('The end date is before the start date.')
+  if (data.active && to < today) bad('The end date is in the past. Pick a later date, or turn the offer off.')
+  const perks = typeof data.perks === 'string' ? data.perks.replace(CONTROL, ' ').replace(/\s+/g, ' ').trim() : ''
+  if (perks.length > 120) bad('Keep the extras under 120 characters.')
+  return { active: data.active, minNights, from, to, perks }
 }
 
 /* ---------- validation of the rules staff save ---------- */

@@ -81,6 +81,7 @@ export default function InvoiceDocument({ booking: b, payment }) {
               <td className="num">{formatLKR(pr.rooms ?? pr.subtotal ?? b.total)}</td>
             </tr>
             {pr.discount > 0 && <tr className="inv-muted"><td colSpan={3}>Promo {pr.promo?.code} (−{pr.promo?.percent}%)</td><td className="num">− {formatLKR(pr.discount)}</td></tr>}
+            {pr.offer && <tr className="inv-muted"><td colSpan={3}>{pr.offer.name}: 1 night free ({prettyDate(pr.offer.night)}){pr.offer.perks && <small>Included: {pr.offer.perks}</small>}</td><td className="num">− {formatLKR(pr.offer.amount)}</td></tr>}
             {pr.service > 0 && <tr className="inv-muted"><td colSpan={3}>Service charge (10%)</td><td className="num">{formatLKR(pr.service)}</td></tr>}
             {pr.tax > 0 && <tr className="inv-muted"><td colSpan={3}>Taxes (8%)</td><td className="num">{formatLKR(pr.tax)}</td></tr>}
             {(b.charges || []).map((c) => (

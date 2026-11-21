@@ -12,6 +12,9 @@ import ScrollGallery from '../components/ScrollGallery'
 import { images, testimonials, galleryItems } from '../data/rooms'
 import { useRooms } from '../context/RoomsContext'
 import { useLatestReviews, stayMonth } from '../lib/reviews'
+import { useOffer, offerLive, offerName } from '../lib/bookings'
+import { useBooking } from '../context/BookingContext'
+import { addDays, nightsBetween, prettyDate, today } from '../utils'
 
 const facilities = [
   { icon: UtensilsCrossed, title: 'Riverside Dining', text: 'Authentic Sri Lankan and international cuisine served on the water’s edge.' },
@@ -37,6 +40,19 @@ export default function Home() {
   const real = reviews.filter((r) => r.rating >= 4 && r.text.length >= 40).slice(0, 3)
     .map((r) => ({ key: r.id, name: r.name, from: `${r.roomName} · ${stayMonth(r.stayMonth)}`, text: r.text, rating: r.rating }))
   const quotes = real.length >= 3 ? real : testimonials
+
+  const { offer } = useOffer()
+  const { search, setSearch } = useBooking()
+  const t = today()
+  const live = offerLive(offer, t)
+  // Rooms page opens with dates that qualify: a check-in inside the offer, at least minNights long
+  const claimOffer = () => {
+    let checkIn = search.checkIn > t ? search.checkIn : addDays(t, 1)
+    if (offer.from > checkIn) checkIn = offer.from
+    if (checkIn > offer.to) checkIn = offer.to
+    const long = search.checkIn === checkIn && nightsBetween(checkIn, search.checkOut) >= offer.minNights
+    setSearch({ ...search, checkIn, checkOut: long ? search.checkOut : addDays(checkIn, offer.minNights) })
+  }
   const [night, setNight] = useState(false)
   const [ready, setReady] = useState(false)
 
@@ -179,16 +195,21 @@ export default function Home() {
         </div>
       </section>
 
-      {/* PARALLAX BANNER */}
-      <section className="banner" style={{ backgroundImage: `url(${images.resort})` }}>
-        <div className="banner-overlay" />
-        <Reveal variant="zoom" className="container banner-content">
-          <span className="eyebrow eyebrow--light">Limited Offer</span>
-          <h2>Stay 3 nights, pay for 2</h2>
-          <p>Book direct this season and enjoy a complimentary night, breakfast and a sunset boat ride.</p>
-          <Link to="/rooms" className="btn btn-gold btn-lg">Claim This Offer <ArrowRight size={18} /></Link>
-        </Reveal>
-      </section>
+      {/* PARALLAX BANNER: the stay-longer offer, only while it's on (Dashboard → Pricing) */}
+      {live && (
+        <section className="banner" style={{ backgroundImage: `url(${images.resort})` }}>
+          <div className="banner-overlay" />
+          <Reveal variant="zoom" className="container banner-content">
+            <span className="eyebrow eyebrow--light">Limited Offer</span>
+            <h2>{offerName(offer)}</h2>
+            <p>
+              Book direct for a check-in by {prettyDate(offer.to)} and your cheapest night is on us
+              {offer.perks ? `, with ${offer.perks.charAt(0).toLowerCase()}${offer.perks.slice(1)}` : ''}. The free night is taken off automatically.
+            </p>
+            <Link to="/rooms" className="btn btn-gold btn-lg" onClick={claimOffer}>Claim This Offer <ArrowRight size={18} /></Link>
+          </Reveal>
+        </section>
+      )}
 
       {/* EXPERIENCES */}
       <section className="section">

@@ -1,17 +1,19 @@
 /*
  * Pricing rules + promo codes in Firestore, and the public price quote.
  *   settings/pricing   { seasons, weekend, updatedAt, updatedBy }
+ *   settings/offer     { active, minNights, from, to, perks, updatedAt }   public: the home page shows it
  *   promos/{CODE}      { code, percent, expires, maxUses, used, active, createdBy, createdAt }
- * Neither is readable by guests (see firestore.rules): guests only ever see a quote.
+ * Rules and promos are not readable by guests (see firestore.rules): guests only ever see a quote.
  */
 import { FieldValue } from 'firebase-admin/firestore'
 import { db } from './firebase.js'
 import { ApiError } from './errors.js'
-import { DEFAULT_RULES, parsePricingRules, parsePromoCode, parsePromoInput, promoProblem, quoteStay } from './pricing.js'
+import { DEFAULT_RULES, offerFor, offerName, parseOffer, parsePricingRules, parsePromoCode, parsePromoInput, promoProblem, quoteStay } from './pricing.js'
 import { hotelToday, nightsOf, parseStay } from './validate.js'
 import { describeRules, logActivity } from './activity.js'
 
 export const rulesRef = () => db.collection('settings').doc('pricing')
+export const offerRef = () => db.collection('settings').doc('offer')
 export const promoRef = (code) => db.collection('promos').doc(code)
 
 export const rulesFrom = (snap) => {
@@ -19,10 +21,13 @@ export const rulesFrom = (snap) => {
   return { seasons: d.seasons || [], weekend: d.weekend || DEFAULT_RULES.weekend }
 }
 
+/** The saved stay-longer offer, or null */
+export const offerFrom = (snap) => (snap.exists ? snap.data() : null)
+
 /** Public: what a stay costs, with an optional promo code. Never reveals anything about other codes. */
 export async function getQuote(query) {
   const stay = parseStay(query)
-  const [roomSnap, rulesSnap] = await Promise.all([db.collection('rooms').doc(stay.roomId).get(), rulesRef().get()])
+  const [roomSnap, rulesSnap, offerSnap] = await Promise.all([db.collection('rooms').doc(stay.roomId).get(), rulesRef().get(), offerRef().get()])
   const room = roomSnap.exists ? roomSnap.data() : null
   if (!room || room.active === false) throw new ApiError('not-found', 'This room is not available.')
 
@@ -38,7 +43,20 @@ export async function getQuote(query) {
       promoError = e instanceof ApiError ? e.message : "This promo code isn't valid."
     }
   }
-  return { quote: quoteStay(room.price, nightsOf(stay.checkIn, stay.nights), rulesFrom(rulesSnap), promo), promoError }
+  const offer = offerFor(offerFrom(offerSnap), stay.checkIn)
+  return { quote: quoteStay(room.price, nightsOf(stay.checkIn, stay.nights), rulesFrom(rulesSnap), promo, null, offer), promoError }
+}
+
+const describeOffer = (o) => (o ? `${offerName(o)}, check-in ${o.from} → ${o.to}${o.perks ? `, with ${o.perks}` : ''}${o.active ? '' : ' (off)'}` : 'none')
+
+export async function saveOffer(staff, body) {
+  const offer = parseOffer(body, hotelToday())
+  const before = offerFrom(await offerRef().get())
+  // No staff email in this document: everyone can read it
+  await offerRef().set({ ...offer, updatedAt: FieldValue.serverTimestamp() })
+  await logActivity(staff, { action: 'offer.updated', target: { type: 'pricing', id: 'offer', label: 'Stay-longer offer' },
+    summary: `${offer.active ? 'Offer on' : 'Offer off'}: ${describeOffer(offer)}`, details: `Before: ${describeOffer(before)}` })
+  return { ok: true, offer }
 }
 
 export async function savePricingRules(staff, body) {

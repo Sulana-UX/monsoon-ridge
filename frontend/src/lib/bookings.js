@@ -147,3 +147,22 @@ export function useUnits() {
   ), [])
   return state
 }
+
+/*
+ * The stay-longer offer (settings/offer), readable by everyone: { active, minNights, from, to, perks }.
+ * offer = null until staff save it once. The server applies it to prices; this is only for showing it.
+ */
+export function useOffer() {
+  const [state, setState] = useState({ offer: null, loading: true, error: null })
+  useEffect(() => onSnapshot(
+    doc(db, 'settings', 'offer'),
+    (snap) => setState({ offer: snap.exists() ? snap.data() : null, loading: false, error: null }),
+    (error) => setState({ offer: null, loading: false, error }),
+  ), [])
+  return state
+}
+
+export const offerName = (o) => `Stay ${o.minNights} nights, pay for ${o.minNights - 1}`
+
+/** On, and guests can still check in under it (today = hotel date, YYYY-MM-DD) */
+export const offerLive = (o, today) => Boolean(o?.active && o.minNights && o.to >= today)

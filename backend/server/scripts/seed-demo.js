@@ -45,6 +45,7 @@ for (const r of starter) {
   await db.collection('rooms').doc(r.id).set(room)
 }
 await db.collection('settings').doc('pricing').set({ ...RULES, updatedAt: at(-10), updatedBy: 'manager@monsoonridge.lk' })
+await db.collection('settings').doc('offer').set({ active: true, minNights: 3, from: day(-10), to: day(120), perks: 'Breakfast and a sunset boat ride', updatedAt: at(-10) })
 await db.collection('promos').doc('MONSOON10').set({ code: 'MONSOON10', percent: 10, active: true, maxUses: 100, used: 23, expires: day(60), createdAt: at(-40), createdBy: 'manager@monsoonridge.lk' })
 await db.collection('promos').doc('HONEYMOON15').set({ code: 'HONEYMOON15', percent: 15, active: true, maxUses: null, used: 7, expires: null, createdAt: at(-30), createdBy: 'manager@monsoonridge.lk' })
 await db.collection('promos').doc('EARLYBIRD').set({ code: 'EARLYBIRD', percent: 12, active: false, maxUses: 50, used: 50, expires: day(-5), createdAt: at(-80), createdBy: 'manager@monsoonridge.lk' })

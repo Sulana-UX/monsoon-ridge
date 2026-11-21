@@ -3,7 +3,7 @@ import { formatLKR, prettyDate } from '../utils'
 /*
  * Price breakdown for a quote or a saved booking price:
  *   room nights (with per-night detail when seasons / weekends change the rate),
- *   promo discount, service charge, tax, total.
+ *   promo discount or the stay-longer offer's free night, service charge, tax, total.
  * Works with older bookings that only have { rate, nights, subtotal, service, tax, total }.
  */
 export default function PriceLines({ price, className = 'price-lines' }) {
@@ -35,6 +35,12 @@ export default function PriceLines({ price, className = 'price-lines' }) {
       )}
       {price.discount > 0 && (
         <div className="price-discount"><span>Promo {price.promo?.code} (−{price.promo?.percent}%)</span><span>− {formatLKR(price.discount)}</span></div>
+      )}
+      {price.offer && (
+        <>
+          <div className="price-discount"><span>Free night ({prettyDate(price.offer.night).replace(/^\w+, /, '').replace(/ \d{4}$/, '')})</span><span>− {formatLKR(price.offer.amount)}</span></div>
+          <div className="price-perks"><span>{price.offer.name}{price.offer.perks ? `. Includes ${price.offer.perks.charAt(0).toLowerCase()}${price.offer.perks.slice(1)}` : ''}.</span></div>
+        </>
       )}
       <div><span>Service charge (10%)</span><span>{formatLKR(price.service)}</span></div>
       <div><span>Taxes (8%)</span><span>{formatLKR(price.tax)}</span></div>

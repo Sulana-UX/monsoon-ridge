@@ -62,6 +62,8 @@ function stayRows(b) {
     ['Guests', `${b.guests} · ${b.nights} night${b.nights === 1 ? '' : 's'}`],
   ]
   if (pr.discount > 0) out.push([`Promo ${esc(pr.promo?.code || '')}`, `− ${lkr(pr.discount)}`])
+  if (pr.offer) out.push([`${esc(pr.offer.name)}: 1 night free`, `− ${lkr(pr.offer.amount)}`])
+  if (pr.offer?.perks) out.push(['Included', esc(pr.offer.perks)])
   out.push(['Service charge &amp; tax', lkr((pr.service || 0) + (pr.tax || 0))])
   out.push(['Total', lkr(b.total), true])
   out.push(['Payment', b.payment === 'card' ? 'Card' : 'Pay at the hotel'])
@@ -213,6 +215,7 @@ function invoiceTable(b, t) {
   const rowsHtml = [
     line(`${esc(b.roomName)}, ${b.nights} night${b.nights === 1 ? '' : 's'}<br><span style="font-size:12px;color:${C.muted}">${esc(day(b.checkIn))} → ${esc(day(b.checkOutActual || b.checkOut))}</span>`, lkr(pr.rooms ?? pr.subtotal ?? b.total)),
     pr.discount > 0 ? line(`Promo ${esc(pr.promo?.code || '')}`, `− ${lkr(pr.discount)}`, { muted: true }) : '',
+    pr.offer ? line(`${esc(pr.offer.name)}: 1 night free`, `− ${lkr(pr.offer.amount)}`, { muted: true }) : '',
     pr.service ? line('Service charge (10%)', lkr(pr.service), { muted: true }) : '',
     pr.tax ? line('Taxes (8%)', lkr(pr.tax), { muted: true }) : '',
     ...(b.charges || []).map((c) => line(`${esc(c.description)}${c.qty > 1 ? ` × ${c.qty}` : ''}`, lkr(c.amount))),

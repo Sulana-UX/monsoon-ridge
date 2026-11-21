@@ -45,6 +45,11 @@ service cloud.firestore {
       allow read: if isManager();
       allow write: if false;
     }
+    // ...except the stay-longer offer, which the home page shows to everyone (no private fields in it)
+    match /settings/offer {
+      allow get: if true;
+      allow write: if false;
+    }
     match /promos/{code} {
       allow read: if isManager();
       allow write: if false;

@@ -9,8 +9,8 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { db } from './firebase.js'
 import { ApiError } from './errors.js'
 import { parseRef, hotelToday, nightsOf } from './validate.js'
-import { quoteStay } from './pricing.js'
-import { rulesRef, rulesFrom } from './pricingStore.js'
+import { offerFor, quoteStay } from './pricing.js'
+import { offerFrom, offerRef, promoRef, rulesRef, rulesFrom } from './pricingStore.js'
 import { planChange, inventoryDelta, keptNights, describeStay } from './changeRules.js'
 import { unitClash } from './unitRules.js'
 import { logActivity, lkr } from './activity.js'
@@ -40,6 +40,11 @@ async function run(actor, refParam, body, { staff, dryRun }) {
     if (!room || (room.active === false && next.roomId !== b.roomId)) throw new ApiError('invalid-argument', 'This room is not available for booking.')
     if (next.guests > room.guests) throw new ApiError('invalid-argument', `${room.name} sleeps up to ${room.guests} guests.`)
     const rules = rulesFrom(await tx.get(rulesRef()))
+    // A booking made with the stay-longer offer keeps its terms; otherwise today's offer, if the new stay qualifies
+    const had = b.price?.offer
+    const offer = had ? { minNights: had.minNights, perks: had.perks } : offerFor(offerFrom(await tx.get(offerRef())), next.checkIn)
+    // the booking's promo code, also one that was set aside because the offer saved more
+    const promo = b.price?.promo || b.price?.promoSkipped || null
 
     // Inventory: only nights that are added (+1) or given back (-1)
     const delta = [...inventoryDelta(b, next)]
@@ -70,13 +75,23 @@ async function run(actor, refParam, body, { staff, dryRun }) {
       }
     }
 
-    const price = quoteStay(room.price, nightsOf(next.checkIn, next.nights), rules, b.price?.promo || null, keptNights(b, next.roomId))
+    const price = quoteStay(room.price, nightsOf(next.checkIn, next.nights), rules, promo, keptNights(b, next.roomId), offer)
     const result = {
       ref, before: { roomId: b.roomId, roomName: b.roomName, checkIn: b.checkIn, checkOut: b.checkOut, guests: b.guests, total: b.total },
       after: { ...next, roomName: room.name, total: price.total }, price, difference: price.total - (b.total || 0), unitNote,
     }
     if (dryRun) return result
 
+    // The promo code's use count follows the price: +1 when it starts giving the discount, -1 when the offer takes over
+    const was = b.price?.promo?.code || null
+    const now = price.promo?.code || null
+    const promoSnaps = was === now ? [] : await Promise.all([was, now].filter(Boolean).map((c) => tx.get(promoRef(c))))
+
+    promoSnaps.forEach((s) => {
+      if (!s.exists) return // code deleted since: nothing to count
+      if (s.id === now) tx.update(s.ref, { used: FieldValue.increment(1) })
+      else if ((s.get('used') || 0) > 0) tx.update(s.ref, { used: FieldValue.increment(-1) })
+    })
     delta.forEach(([k, d], i) => {
       if (d > 0) {
         if (inv[i].exists) tx.update(inv[i].ref, { booked: FieldValue.increment(d) })

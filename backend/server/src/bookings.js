@@ -8,8 +8,8 @@ import { randomInt } from 'node:crypto'
 import { FieldValue } from 'firebase-admin/firestore'
 import { auth as adminAuth, db } from './firebase.js'
 import { ApiError } from './errors.js'
-import { promoProblem, quoteStay } from './pricing.js'
-import { promoRef, rulesFrom, rulesRef } from './pricingStore.js'
+import { offerFor, promoProblem, quoteStay } from './pricing.js'
+import { offerFrom, offerRef, promoRef, rulesFrom, rulesRef } from './pricingStore.js'
 import { later, sendBookingEmails, sendCancellationEmail } from './notify.js'
 import { logActivity, lkr } from './activity.js'
 import { getStaffRole } from './staff.js'
@@ -83,6 +83,7 @@ async function reserve(req, extra) {
     // Season / weekend rules and the promo code are read in the same transaction,
     // so the usage limit can't be overshot by two guests at once
     const rulesSnap = await tx.get(rulesRef())
+    const offer = offerFor(offerFrom(await tx.get(offerRef())), req.checkIn)
     let promo = null
     if (req.promo) {
       const p = await tx.get(promoRef(req.promo))
@@ -90,7 +91,7 @@ async function reserve(req, extra) {
       if (problem) throw new ApiError('failed-precondition', problem)
       promo = { code: req.promo, percent: p.get('percent') }
     }
-    const price = quoteStay(room.price, nights, rulesFrom(rulesSnap), promo)
+    const price = quoteStay(room.price, nights, rulesFrom(rulesSnap), promo, null, offer)
 
     let ref = newRef()
     for (let i = 0; i < 5 && (await tx.get(db.collection('bookings').doc(ref))).exists; i++) ref = newRef()
@@ -102,7 +103,8 @@ async function reserve(req, extra) {
     }
 
     // then writes
-    if (promo) tx.update(promoRef(promo.code), { used: FieldValue.increment(1) })
+    // only counts as a use when the code really gave the discount (not when the offer saved more)
+    if (price.promo) tx.update(promoRef(price.promo.code), { used: FieldValue.increment(1) })
     nights.forEach((date, i) => {
       if (inv[i].exists) tx.update(invRef(req.roomId, date), { booked: FieldValue.increment(1) })
       else tx.set(invRef(req.roomId, date), { roomId: req.roomId, date, booked: 1 })

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   User, Mail, Phone, Globe, Clock, MessageSquare, CreditCard, Building, Lock,
-  Check, CalendarDays, Users, ChevronLeft, ShieldCheck, Tag,
+  Check, CalendarDays, Users, ChevronLeft, ShieldCheck, Tag, Gift,
 } from 'lucide-react'
 import { useRooms } from '../context/RoomsContext'
 import { useAvailability } from '../lib/useAvailability'
@@ -11,7 +11,8 @@ import PriceLines from '../components/PriceLines'
 import { useBooking } from '../context/BookingContext'
 import { useAuth } from '../context/AuthContext'
 import { api, friendlyError } from '../lib/firebase'
-import { formatLKR, nightsBetween, prettyDate } from '../utils'
+import { formatLKR, nightsBetween, prettyDate, today } from '../utils'
+import { useOffer, offerLive, offerName } from '../lib/bookings'
 import NotFound from './NotFound'
 
 const steps = ['Choose Room', 'Guest Details', 'Confirmation']
@@ -39,11 +40,16 @@ export default function Booking() {
   const [promo, setPromo] = useState('')
   const { quote: price, promoError, loading: quoting } = useQuote(room, search.checkIn, search.checkOut, promo)
   const promoOk = promo.trim() && !quoting && price?.promo?.code === promo.trim().toUpperCase()
+  const { offer } = useOffer()
 
   if (!room) return roomsLoading ? <div className="page-loading"><span className="spinner" /></div> : <NotFound />
 
   const nights = nightsBetween(search.checkIn, search.checkOut)
-  const set = (k) => (e) =>
+  const skipped = promo.trim() && price?.promoSkipped?.code === promo.trim().toUpperCase()
+  // the dates qualify for the offer except for length
+  const offerHint = offerLive(offer, today()) && nights > 0 && nights < offer.minNights
+    && search.checkIn >= offer.from && search.checkIn <= offer.to
+  const set =(k) => (e) =>
     setForm({ ...form, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value })
 
   const validate = () => {
@@ -202,10 +208,14 @@ export default function Booking() {
                 <span><Tag size={15} /> Promo code</span>
                 <input value={promo} onChange={(e) => setPromo(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20))}
                   placeholder="e.g. MONSOON10" autoComplete="off" aria-describedby="promo-msg" />
-                <small id="promo-msg" className={promoError ? 'err' : 'promo-ok'} role="status">
-                  {promo && !quoting ? (promoError || (promoOk ? `${price.promo.percent}% off applied` : '')) : ''}
+                <small id="promo-msg" className={promoError ? 'err' : skipped ? 'promo-note' : 'promo-ok'} role="status">
+                  {promo && !quoting ? (promoError || (promoOk ? `${price.promo.percent}% off applied`
+                    : skipped ? `${price.promoSkipped.code} can't be added to the ${price.offer?.name} offer, which saves you more. You get the free night.` : '')) : ''}
                 </small>
               </label>
+              {offerHint && (
+                <p className="offer-hint"><Gift size={16} /> Stay {offer.minNights - nights} more night{offer.minNights - nights === 1 ? '' : 's'} and one night is free ({offerName(offer)}).</p>
+              )}
               <div className="perk"><ShieldCheck size={16} /> Free cancellation until 48 hours before check-in</div>
             </div>
           </aside>

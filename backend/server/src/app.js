@@ -20,7 +20,7 @@ import { logActivity, roomChanges, lkr } from './activity.js'
 import { getReviewStay, submitReview, sendReviewInvite, setReviewStatus, replyToReview } from './reviews.js'
 import { previewChange, changeBooking } from './changes.js'
 import { addCharge, removeCharge, addPayment, removePayment, issueInvoice, emailInvoice } from './folio.js'
-import { getQuote, savePricingRules, createPromo, updatePromo, deletePromo } from './pricingStore.js'
+import { getQuote, savePricingRules, saveOffer, createPromo, updatePromo, deletePromo } from './pricingStore.js'
 
 const origins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',').map((s) => s.trim()).filter(Boolean)
 
@@ -207,6 +207,7 @@ app.put('/api/admin/units/:number', requireUser, requireAdmin, handle((req) => s
 
 // Pricing rules & promo codes (staff)
 app.put('/api/admin/pricing', writeLimit, requireUser, requireAdmin, requireManager, handle((req) => savePricingRules(req.user, req.body)))
+app.put('/api/admin/offer', writeLimit, requireUser, requireAdmin, requireManager, handle((req) => saveOffer(req.user, req.body)))
 app.post('/api/admin/promos', writeLimit, requireUser, requireAdmin, requireManager, handle((req) => createPromo(req.user, req.body)))
 app.put('/api/admin/promos/:code', writeLimit, requireUser, requireAdmin, requireManager, handle((req) => updatePromo(req.user, req.params.code, req.body)))
 app.delete('/api/admin/promos/:code', writeLimit, requireUser, requireAdmin, requireManager, handle((req) => deletePromo(req.user, req.params.code)))

@@ -453,3 +453,17 @@
 
 .folio-balance.is-refund { background: #eef4f7; color: #2f5f75; }
 .booking-details .change-stay { margin-bottom: 18px; box-shadow: none; }
+
+/* Stay-longer offer card (Pricing) */
+.offer-form { display: grid; grid-template-columns: auto minmax(0, .8fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px 14px; align-items: end; margin-bottom: 10px; }
+.offer-form.room-editor .field { margin: 0; min-width: 0; grid-column: auto; }
+.offer-form.room-editor .offer-perks { grid-column: 1 / 4; }
+.offer-form .field em { font-style: normal; color: var(--muted); font-weight: 400; }
+.offer-form .month-chips { margin: 0; flex-wrap: nowrap; }
+.offer-form .btn { height: 46px; white-space: nowrap; }
+.admin-card h3 .status { margin-left: 8px; font-size: .72rem; vertical-align: middle; }
+@media (max-width: 760px) {
+  .offer-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .offer-form.room-editor .offer-perks { grid-column: 1 / -1; }
+  .offer-form .btn { grid-column: 1 / -1; }
+}

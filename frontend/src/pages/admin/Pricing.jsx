@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Sun, CalendarHeart, Tag, Plus, Trash2, Save, Pause, Play, Percent } from 'lucide-react'
+import { Sun, CalendarHeart, Tag, Plus, Trash2, Save, Pause, Play, Percent, Gift } from 'lucide-react'
 import { api, friendlyError } from '../../lib/firebase'
-import { usePricingRules, usePromos } from '../../lib/bookings'
+import { usePricingRules, usePromos, useOffer, offerLive, offerName } from '../../lib/bookings'
 import { addDays, formatLKR, prettyDate, today } from '../../utils'
 import { useDialog } from '../../components/Dialog'
 
@@ -29,6 +29,7 @@ export default function Pricing() {
       </div>
       <div className="admin-grid">
         <PriceRules />
+        <OfferCard />
         <Promos />
       </div>
     </>
@@ -262,6 +263,76 @@ function Promos() {
             </table>
           </div>
         )}
+    </section>
+  )
+}
+
+/* "Stay 3 nights, pay for 2": the home page banner and the free night in every price come from this */
+function OfferCard() {
+  const { offer: saved, loading } = useOffer()
+  const t = today()
+  const [o, setO] = useState(null)
+  const [dirty, setDirty] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState(null)
+
+  useEffect(() => {
+    if (dirty || loading) return
+    setO(saved
+      ? { active: saved.active, minNights: saved.minNights, from: saved.from, to: saved.to, perks: saved.perks || '' }
+      : { active: false, minNights: 3, from: t, to: addDays(t, 90), perks: 'Breakfast and a sunset boat ride' })
+  }, [saved, loading, dirty, t])
+
+  if (!o) return null
+  const set = (k, v) => { setO((x) => ({ ...x, [k]: v })); setDirty(true); setMsg(null) }
+  const n = Number(o.minNights) || 0
+
+  const save = async (e) => {
+    e.preventDefault()
+    setBusy(true)
+    setMsg(null)
+    try {
+      await api.saveOffer({ active: o.active, minNights: n, from: o.from, to: o.to, perks: o.perks })
+      setDirty(false)
+      setMsg({ ok: true, text: o.active
+        ? `Saved. The offer is on the home page, and stays of ${n}+ nights checking in ${prettyDate(o.from)} – ${prettyDate(o.to)} get their cheapest night free.`
+        : 'Saved. The offer is off: the home page banner is hidden and new bookings pay for every night.' })
+    } catch (e2) {
+      setMsg({ ok: false, text: friendlyError(e2) })
+    }
+    setBusy(false)
+  }
+
+  const live = saved && offerLive(saved, t)
+  return (
+    <section className="admin-card admin-card--wide">
+      <div className="admin-card-head">
+        <div>
+          <h3><Gift size={18} /> Stay-longer offer {live ? <span className="status status--in">On</span> : <span className="status status--out">Off</span>}</h3>
+          <p className="muted small">The cheapest night of a long enough stay is free, once per stay. It can't be added to a promo code: guests get whichever saves more. Bookings already made keep their price.</p>
+        </div>
+      </div>
+      <form className="offer-form room-editor" onSubmit={save} noValidate>
+        <div className="field"><span>Offer</span>
+          <div className="month-chips" role="group" aria-label="Offer on or off">
+            <button type="button" className={`mchip ${o.active ? 'is-on' : ''}`} aria-pressed={o.active} onClick={() => set('active', true)}>On</button>
+            <button type="button" className={`mchip ${!o.active ? 'is-on' : ''}`} aria-pressed={!o.active} onClick={() => set('active', false)}>Off</button>
+          </div>
+        </div>
+        <label className="field"><span>Stay at least (nights)</span>
+          <div className="input-wrap"><input type="number" min={2} max={14} value={o.minNights} onChange={(e) => set('minNights', e.target.value)} /></div></label>
+        <label className="field"><span>Check-in from</span>
+          <div className="input-wrap"><input type="date" value={o.from} onChange={(e) => set('from', e.target.value)} /></div></label>
+        <label className="field"><span>Check-in until</span>
+          <div className="input-wrap"><input type="date" min={o.from} value={o.to} onChange={(e) => set('to', e.target.value)} /></div></label>
+        <label className="field offer-perks"><span>Also included <em>(optional, shown to guests)</em></span>
+          <div className="input-wrap"><input value={o.perks} maxLength={120} placeholder="Breakfast and a sunset boat ride" onChange={(e) => set('perks', e.target.value)} /></div></label>
+        <button className="btn btn-gold" disabled={busy || !dirty}>
+          {busy ? <span className="spinner spinner--sm" /> : <Save size={16} />} {dirty ? 'Save offer' : 'Saved'}
+        </button>
+      </form>
+      {n >= 2 && <p className="muted small">Guests see: <strong>{offerName({ minNights: n })}</strong>{o.perks ? `, with ${o.perks.charAt(0).toLowerCase()}${o.perks.slice(1)}` : ''}. Please make sure the kitchen and the boat team know about the extras.</p>}
+      {msg && <p className={`auth-msg ${msg.ok ? '' : 'auth-msg--err'}`} role="status">{msg.text}</p>}
     </section>
   )
 }

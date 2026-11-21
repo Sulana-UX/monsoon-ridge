@@ -149,6 +149,7 @@ export default function NewBooking() {
               <div className="input-wrap"><input value={f.promo} placeholder="e.g. MONSOON10" autoComplete="off"
                 onChange={(e) => setF((x) => ({ ...x, promo: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20) }))} /></div>
               {f.promo && !quoting && !promoError && price?.promo && <small className="promo-ok">{price.promo.percent}% off applied</small>}
+              {f.promo && !quoting && !promoError && price?.promoSkipped && <small className="muted">Not added: the {price.offer?.name} offer saves the guest more.</small>}
             </label>
             <label className="field nb-pay"><span>Payment</span>
               <div className="input-wrap"><select value={f.payment} onChange={set('payment')}>
