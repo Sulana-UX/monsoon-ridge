@@ -17,6 +17,7 @@ import { sendVerification, sendPasswordReset } from './accountEmails.js'
 import { setRoomNumbers, assignUnit, setHousekeeping } from './units.js'
 import { addStaff, removeStaff, listStaff, setStaffRole, getStaffRole, ROLE_LABEL } from './staff.js'
 import { logActivity, roomChanges, lkr } from './activity.js'
+import { getReviewStay, submitReview, sendReviewInvite, setReviewStatus, replyToReview } from './reviews.js'
 import { getQuote, savePricingRules, createPromo, updatePromo, deletePromo } from './pricingStore.js'
 
 const origins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',').map((s) => s.trim()).filter(Boolean)
@@ -42,6 +43,9 @@ const promoLimit = rateLimit({ windowMs: 10 * 60_000, limit: 20, standardHeaders
 const contactLimit = rateLimit({ windowMs: 60 * 60_000, limit: 5, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: { code: 'resource-exhausted', message: 'Too many messages. Please try again later or call us.' } } })
 // Account emails: 5 per hour per IP (stops anyone flooding an inbox)
 const accountEmailLimit = rateLimit({ windowMs: 60 * 60_000, limit: 5, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: { code: 'resource-exhausted', message: 'Too many emails requested. Please wait a while and try again.' } } })
+// Reviews are public (token link): 10 submits / hour per IP
+const reviewLimit = rateLimit({ windowMs: 60 * 60_000, limit: 10, standardHeaders: 'draft-7', legacyHeaders: false, message: { error: { code: 'resource-exhausted', message: 'Too many tries. Please wait a while and try again.' } } })
+const reviewReadLimit = rateLimit({ windowMs: 10 * 60_000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false })
 const writeLimit = rateLimit({ windowMs: 10 * 60_000, limit: 20, standardHeaders: 'draft-7', legacyHeaders: false })
 
 /** Signed in, email verified or not (only for asking for the verification email). */
@@ -57,6 +61,16 @@ async function requireSignedIn(req, _res, next) {
   } catch (e) {
     next(e)
   }
+}
+
+/** Signed in if a token is sent, otherwise anonymous (review links work without an account). */
+async function optionalUser(req, _res, next) {
+  const m = /^Bearer (.+)$/.exec(req.get('authorization') || '')
+  if (m) {
+    const token = await auth.verifyIdToken(m[1], true).catch(() => null)
+    if (token) req.user = { uid: token.uid, email: token.email }
+  }
+  next()
 }
 
 /** Requires `Authorization: Bearer <Firebase ID token>` from a verified email. */
@@ -120,6 +134,11 @@ app.post('/api/auth/password-reset', accountEmailLimit, handle((req) => sendPass
 // Public: contact form → dashboard inbox
 app.post('/api/contact', contactLimit, handle((req) => createMessage(req.body)))
 
+// Guest reviews: the guest's own account, or the private link from the check-out email
+const reviewAccess = (req) => ({ token: req.query.t || req.body?.t, user: req.user })
+app.get('/api/reviews/:ref', reviewReadLimit, optionalUser, handle((req) => getReviewStay(req.params.ref, reviewAccess(req))))
+app.post('/api/reviews/:ref', reviewLimit, optionalUser, handle((req) => submitReview(req.params.ref, reviewAccess(req), req.body)))
+
 app.post('/api/bookings', writeLimit, requireUser, handle((req) => createBooking(req.user, req.body)))
 app.post('/api/bookings/:ref/cancel', writeLimit, requireUser, handle((req) => cancelBooking(req.user, req.params.ref)))
 app.post('/api/me/sync-admin', requireUser, handle((req) => syncAdminClaim(req.user)))
@@ -169,6 +188,9 @@ app.post('/api/admin/bookings/:ref/email', writeLimit, requireUser, requireAdmin
   return r
 }))
 app.put('/api/admin/messages/:id', requireUser, requireAdmin, handle((req) => setMessageStatus(req.user, req.params.id, req.body?.status)))
+app.post('/api/admin/bookings/:ref/review-invite', writeLimit, requireUser, requireAdmin, handle((req) => sendReviewInvite(req.params.ref, { staff: req.user })))
+app.put('/api/admin/reviews/:ref', writeLimit, requireUser, requireAdmin, requireManager, handle((req) => setReviewStatus(req.user, req.params.ref, req.body?.status)))
+app.put('/api/admin/reviews/:ref/reply', writeLimit, requireUser, requireAdmin, handle((req) => replyToReview(req.user, req.params.ref, req.body)))
 app.post('/api/admin/messages/:id/reply', writeLimit, requireUser, requireAdmin, handle((req) => replyToMessage(req.user, req.params.id, req.body)))
 app.delete('/api/admin/messages/:id', writeLimit, requireUser, requireAdmin, handle((req) => deleteMessage(req.user, req.params.id)))
 

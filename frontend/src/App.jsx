@@ -12,6 +12,7 @@ import MyBookings from './pages/MyBookings'
 import Contact from './pages/Contact'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
+import Review from './pages/Review'
 import AdminLayout from './pages/admin/AdminLayout'
 import Overview from './pages/admin/Overview'
 import AdminBookings from './pages/admin/Bookings'
@@ -29,6 +30,7 @@ import Staff from './pages/admin/Staff'
 import Activity from './pages/admin/Activity'
 import ManagerOnly from './pages/admin/ManagerOnly'
 import Housekeeping from './pages/admin/Housekeeping'
+import Reviews from './pages/admin/Reviews'
 import RequireAuth from './components/RequireAuth'
 
 function ScrollToTop() {
@@ -70,6 +72,7 @@ export default function App() {
             <Route path="pricing" element={<ManagerOnly><Pricing /></ManagerOnly>} />
             <Route path="reports" element={<ManagerOnly><Reports /></ManagerOnly>} />
             <Route path="inbox" element={<Inbox />} />
+            <Route path="reviews" element={<Reviews />} />
             <Route path="staff" element={<ManagerOnly><Staff /></ManagerOnly>} />
             <Route path="activity" element={<ManagerOnly><Activity /></ManagerOnly>} />
             <Route path="calendar" element={<Calendar />} />
@@ -82,6 +85,7 @@ export default function App() {
           <Route path="/login" element={<Login mode="login" />} />
           <Route path="/register" element={<Login mode="register" />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/review/:ref" element={<Review />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

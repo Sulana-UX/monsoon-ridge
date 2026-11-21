@@ -325,3 +325,55 @@ test('housekeeping input', () => {
   assert.throws(() => parseHousekeeping({ housekeeping: 'sparkly' }))
   assert.throws(() => parseHousekeeping({}))
 })
+
+import { parseReview, publicName, reviewProblem, applyRating, newToken, hashToken, tokenMatches, parseReply } from '../src/reviewRules.js'
+
+test('reviews: input is checked and cleaned', () => {
+  assert.deepEqual(parseReview({ rating: 5, title: ' Lovely ', text: '  Great stay, friendly staff. ', uid: 'x' }), { rating: 5, title: 'Lovely', text: 'Great stay, friendly staff.' })
+  assert.equal(parseReview({ rating: '4', text: 'Nice and quiet room' }).rating, 4)
+  for (const r of [0, 6, 4.5, 'abc', null]) assert.throws(() => parseReview({ rating: r, text: 'Nice and quiet room' }))
+  assert.throws(() => parseReview({ rating: 5, text: 'short' }))
+  assert.throws(() => parseReview({ rating: 5, text: 'x'.repeat(2001) }))
+  assert.throws(() => parseReview({ rating: 5, title: 'x'.repeat(81), text: 'Nice and quiet room' }))
+})
+
+test('reviews: public name never shows the full surname', () => {
+  assert.equal(publicName({ firstName: 'Kasun', lastName: 'perera' }), 'Kasun P.')
+  assert.equal(publicName({ firstName: 'Kasun' }), 'Kasun')
+  assert.equal(publicName({}), 'Guest')
+})
+
+test('reviews: only checked-out stays, once, within the time limit', () => {
+  const b = { status: 'CheckedOut', checkOut: '2026-05-10' }
+  assert.equal(reviewProblem(b, '2026-05-11'), null)
+  assert.match(reviewProblem({ ...b, status: 'Confirmed' }, '2026-05-11'), /after you check out/)
+  assert.match(reviewProblem({ ...b, status: 'CheckedIn' }, '2026-05-11'), /after you check out/)
+  assert.match(reviewProblem({ ...b, review: { rating: 5 } }, '2026-05-11'), /already/)
+  assert.match(reviewProblem(b, '2026-12-01'), /days after/)
+  assert.equal(reviewProblem({ ...b, checkOutActual: '2026-05-08' }, '2026-09-05'), null)
+})
+
+test('reviews: room average follows adds and removals', () => {
+  let room = {}
+  room = applyRating(room, 5, +1)
+  room = applyRating(room, 4, +1)
+  assert.deepEqual(room, { reviewCount: 2, reviewSum: 9, ratingAvg: 4.5 })
+  room = applyRating(room, 3, +1)
+  assert.equal(room.ratingAvg, 4)
+  room = applyRating(applyRating(room, 5, -1), 4, -1)
+  assert.deepEqual(room, { reviewCount: 1, reviewSum: 3, ratingAvg: 3 })
+  assert.deepEqual(applyRating(room, 3, -1), { reviewCount: 0, reviewSum: 0, ratingAvg: null })
+})
+
+test('reviews: link tokens are random and only the hash is compared', () => {
+  const t = newToken()
+  assert.notEqual(t, newToken())
+  assert.ok(t.length >= 30)
+  assert.equal(tokenMatches(t, hashToken(t)), true)
+  assert.equal(tokenMatches(t + 'x', hashToken(t)), false)
+  assert.equal(tokenMatches('', hashToken('')), false)
+  assert.equal(tokenMatches(t, undefined), false)
+  assert.equal(parseReply({ text: '  Thanks!  ' }), 'Thanks!')
+  assert.equal(parseReply({ text: '' }), '')
+  assert.throws(() => parseReply({}))
+})

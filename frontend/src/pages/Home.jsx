@@ -11,6 +11,7 @@ import Reveal from '../components/Reveal'
 import ScrollGallery from '../components/ScrollGallery'
 import { images, testimonials, galleryItems } from '../data/rooms'
 import { useRooms } from '../context/RoomsContext'
+import { useLatestReviews, stayMonth } from '../lib/reviews'
 
 const facilities = [
   { icon: UtensilsCrossed, title: 'Riverside Dining', text: 'Authentic Sri Lankan and international cuisine served on the water’s edge.' },
@@ -31,6 +32,11 @@ const stats = [
 export default function Home() {
   const { rooms } = useRooms()
   const featured = rooms.filter((r) => r.featured)
+  // Real guest reviews (4 stars and up, with enough to read); the starter quotes until there are 3
+  const { reviews } = useLatestReviews(12)
+  const real = reviews.filter((r) => r.rating >= 4 && r.text.length >= 40).slice(0, 3)
+    .map((r) => ({ key: r.id, name: r.name, from: `${r.roomName} · ${stayMonth(r.stayMonth)}`, text: r.text, rating: r.rating }))
+  const quotes = real.length >= 3 ? real : testimonials
   const [night, setNight] = useState(false)
   const [ready, setReady] = useState(false)
 
@@ -216,8 +222,8 @@ export default function Home() {
             <h2>What our guests say</h2>
           </Reveal>
           <div className="testi-grid">
-            {testimonials.map((t, i) => (
-              <Reveal key={t.name} delay={i * 150}>
+            {quotes.map((t, i) => (
+              <Reveal key={t.key || t.name} delay={i * 150}>
               <figure className="testi">
                 <Quote size={32} className="testi-quote" />
                 <div className="stars">

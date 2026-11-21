@@ -107,7 +107,7 @@ export async function createRoom(db, body) {
       id = `${base}-${n}`
     }
     tx.create(db.collection('rooms').doc(id), {
-      ...room, id, rating: null, reviews: 0,
+      ...room, id, reviewCount: 0, reviewSum: 0, ratingAvg: null,
       createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
     })
     return { id }

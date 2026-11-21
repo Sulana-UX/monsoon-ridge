@@ -31,7 +31,7 @@ export default function RoomCard({ room, left }) {
         <div className="room-card-top">
           <h3>{room.name}</h3>
           <span className="rating">
-            {room.rating ? <><Star size={14} fill="currentColor" /> {room.rating.toFixed(1)}</> : 'New'}
+            {room.reviewCount > 0 ? <><Star size={14} fill="currentColor" /> {room.ratingAvg.toFixed(1)} <small>({room.reviewCount})</small></> : 'New'}
           </span>
         </div>
         <p className="muted">{room.short}</p>

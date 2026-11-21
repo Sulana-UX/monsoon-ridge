@@ -180,3 +180,23 @@ export function guestReply(m, reply) {
   const text = `Dear ${m.name},\n\n${reply}\n\nKind regards,\n${HOTEL.name}\n${HOTEL.phone}\n\n> ${m.message.split('\n').join('\n> ')}`
   return { subject, html: layout({ preheader: reply.slice(0, 90), title: subject, body }), text }
 }
+
+/* ---------- after check-out: ask for a review ---------- */
+
+export function reviewRequest(b, link) {
+  const name = esc(b.guest?.firstName || 'there')
+  const subject = `How was your stay at ${HOTEL.short}?`
+  const stars = [1, 2, 3, 4, 5]
+    .map((n) => `<a href="${esc(link)}&amp;r=${n}" style="text-decoration:none;font-size:30px;color:${C.gold};padding:0 3px" title="${n} star${n > 1 ? 's' : ''}">&#9733;</a>`)
+    .join('')
+  const body = [
+    h1('Thank you for staying with us'),
+    p(`Hi ${name}, we hope you enjoyed your time in the ${esc(b.roomName)}. Would you tell us how it went? It takes a minute and helps other travellers choose.`),
+    `<p style="margin:18px 0 6px;text-align:center">${stars}</p>`,
+    `<p style="margin:0 0 20px;text-align:center;font-size:12px;color:${C.muted}">Tap a star to start</p>`,
+    `<p style="margin:0 0 18px;text-align:center">${button(link, 'Write a review')}</p>`,
+    p(`<span style="font-size:13px;color:${C.muted}">This link is just for you (booking ${esc(b.ref)}). Your first name and last initial are shown with your review, never your email.</span>`),
+  ].join('')
+  const text = `Hi ${b.guest?.firstName || 'there'},\n\nThank you for staying in the ${b.roomName}. Would you tell us how it went?\n\nWrite a review: ${link}\n\nThis link is just for you (booking ${b.ref}).`
+  return { subject, html: layout({ preheader: 'Tell us about your stay: it takes a minute', title: subject, body }), text }
+}

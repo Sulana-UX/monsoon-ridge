@@ -14,6 +14,7 @@ import { addDays, formatLKR, nightsBetween, today } from '../utils'
 import { useQuote } from '../lib/useQuote'
 import PriceLines from '../components/PriceLines'
 import NotFound from './NotFound'
+import RoomReviews from '../components/RoomReviews'
 
 export default function RoomDetails() {
   const { id } = useParams()
@@ -55,11 +56,11 @@ export default function RoomDetails() {
               <span className="badge badge--static">{room.type}</span>
               <h1>{room.name}</h1>
               <div className="detail-sub">
-                {room.rating ? (
-                  <>
-                    <span className="rating"><Star size={15} fill="currentColor" /> {room.rating.toFixed(1)}</span>
-                    <span className="muted">({room.reviews} reviews)</span>
-                  </>
+                {room.reviewCount > 0 ? (
+                  <a href="#reviews" className="detail-rating-link">
+                    <span className="rating"><Star size={15} fill="currentColor" /> {room.ratingAvg.toFixed(1)}</span>
+                    <span className="muted">({room.reviewCount} review{room.reviewCount === 1 ? '' : 's'})</span>
+                  </a>
                 ) : <span className="badge badge--static badge--new">New</span>}
                 <span className="dot" />
                 {room.view && <span className="muted">{room.view}</span>}
@@ -120,6 +121,8 @@ export default function RoomDetails() {
                   <div><ShieldCheck size={18} /><span>Free cancellation up to 48h</span></div>
                 </div>
               </div>
+
+              <RoomReviews roomId={room.id} />
             </div>
 
             <aside className="booking-widget">

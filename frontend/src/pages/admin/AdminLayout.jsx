@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, CalendarDays, CalendarRange, CalendarOff, Users, LogOut, BedDouble, Menu, ChevronRight, Tag, BarChart3, Inbox as InboxIcon, ShieldCheck, History, Sparkles } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, CalendarRange, CalendarOff, Users, LogOut, BedDouble, Menu, ChevronRight, Tag, BarChart3, Inbox as InboxIcon, ShieldCheck, History, Sparkles, Star } from 'lucide-react'
 import { useBookings, useBlocks, useMessages, useUnits } from '../../lib/bookings'
 import { useAuth } from '../../context/AuthContext'
 import { useAllRooms } from '../../context/RoomsContext'
@@ -18,6 +18,7 @@ const NAV = [
   { to: '/admin/blocks', label: 'Blocked dates', icon: CalendarOff },
   { to: '/admin/guests', label: 'Guests', icon: Users },
   { to: '/admin/inbox', label: 'Inbox', icon: InboxIcon, count: 'unread' },
+  { to: '/admin/reviews', label: 'Reviews', icon: Star },
   { to: '/admin/pricing', label: 'Pricing & promos', icon: Tag, manager: true },
   { to: '/admin/reports', label: 'Reports', icon: BarChart3, manager: true },
   { to: '/admin/staff', label: 'Staff', icon: ShieldCheck, manager: true },

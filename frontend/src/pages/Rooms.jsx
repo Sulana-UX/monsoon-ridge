@@ -27,7 +27,7 @@ export default function Rooms() {
     )
     if (sort === 'price-asc') r = [...r].sort((a, b) => a.price - b.price)
     if (sort === 'price-desc') r = [...r].sort((a, b) => b.price - a.price)
-    if (sort === 'rating') r = [...r].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+    if (sort === 'rating') r = [...r].sort((a, b) => (b.ratingAvg ?? 0) - (a.ratingAvg ?? 0) || (b.reviewCount ?? 0) - (a.reviewCount ?? 0))
     // rooms that are full for the chosen dates go last
     if (available) r = [...r].sort((a, b) => (available[a.id] === 0) - (available[b.id] === 0))
     return r

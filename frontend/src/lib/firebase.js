@@ -55,6 +55,24 @@ async function call(path, body, method = 'POST') {
   return { data }
 }
 
+/** Public endpoint that also sends the ID token when someone is signed in (review links). */
+async function publicCall(path, body, method = 'POST') {
+  const token = auth.currentUser ? await auth.currentUser.getIdToken().catch(() => null) : null
+  let res
+  try {
+    res = await fetch(API_URL + path, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
+      body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
+    })
+  } catch {
+    throw new ApiError('api/unavailable', 'Could not reach the server. Please try again in a moment.')
+  }
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new ApiError(`api/${data.error?.code || 'internal'}`, data.error?.message || 'Something went wrong. Please try again.')
+  return data
+}
+
 export const api = {
   createBooking: (booking) => call('/api/bookings', booking),
   cancelBooking: ({ ref }) => call(`/api/bookings/${encodeURIComponent(ref)}/cancel`),
@@ -90,6 +108,13 @@ export const api = {
   setMessageStatus: (id, status) => call(`/api/admin/messages/${encodeURIComponent(id)}`, { status }, 'PUT'),
   replyMessage: (id, text) => call(`/api/admin/messages/${encodeURIComponent(id)}/reply`, { text }),
   deleteMessage: (id) => call(`/api/admin/messages/${encodeURIComponent(id)}`, null, 'DELETE'),
+  // guest reviews (staff)
+  sendReviewInvite: (ref) => call(`/api/admin/bookings/${encodeURIComponent(ref)}/review-invite`),
+  setReviewStatus: (ref, status) => call(`/api/admin/reviews/${encodeURIComponent(ref)}`, { status }, 'PUT'),
+  replyReview: (ref, text) => call(`/api/admin/reviews/${encodeURIComponent(ref)}/reply`, { text }, 'PUT'),
+  // guest reviews (public: own account or the emailed link token)
+  reviewStay: (ref, t) => publicCall(`/api/reviews/${encodeURIComponent(ref)}${t ? `?t=${encodeURIComponent(t)}` : ''}`, null, 'GET'),
+  submitReview: (ref, t, review) => publicCall(`/api/reviews/${encodeURIComponent(ref)}`, { ...review, t }),
   // Account emails through the hotel's own sender (Brevo). { status: 'sent' | 'already' | 'skipped' }
   sendVerification: async () => (await call('/api/auth/send-verification')).data,
   passwordReset: async (email) => {

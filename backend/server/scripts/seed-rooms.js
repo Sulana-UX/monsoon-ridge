@@ -25,7 +25,7 @@ for (const r of starter) {
   }
   const room = parseRoomInput({ ...r, type: CATEGORY[r.id] ?? 'Double', active: true })
   await ref.set({
-    ...room, id: r.id, rating: r.rating ?? null, reviews: r.reviews ?? 0,
+    ...room, id: r.id, reviewCount: 0, reviewSum: 0, ratingAvg: null, // real guest reviews only
     createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
   })
   console.log(`✓ ${r.id}: added as ${room.type}`)

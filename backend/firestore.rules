@@ -74,6 +74,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Guest reviews: published ones are public (website), staff also see hidden ones.
+    // The document holds nothing private. Written only through the API.
+    match /reviews/{ref} {
+      allow get, list: if resource.data.status == 'published' || isAdmin();
+      allow write: if false;
+    }
+
     // Per-night room counts: server only.
     match /inventory/{id} {
       allow read, write: if false;

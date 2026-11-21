@@ -8,7 +8,7 @@
 import { FieldValue } from 'firebase-admin/firestore'
 import { db } from './firebase.js'
 
-export const CATEGORIES = { booking: 'Bookings', room: 'Rooms', pricing: 'Prices & promos', block: 'Blocked dates', staff: 'Staff', inbox: 'Inbox' }
+export const CATEGORIES = { booking: 'Bookings', room: 'Rooms', pricing: 'Prices & promos', block: 'Blocked dates', staff: 'Staff', inbox: 'Inbox', review: 'Reviews' }
 
 /** actor: { email, admin } from the signed-in user, or { email, guest: true } */
 export async function logActivity(actor, { action, target, summary, details }) {

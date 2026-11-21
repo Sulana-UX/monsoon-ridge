@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useOutletContext, useParams } from 'react-router-dom'
 import {
   ChevronLeft, Printer, Mail, Phone, Globe, Clock, Users, CalendarDays, BedDouble, CreditCard,
-  MessageSquare, StickyNote, Trash2, Send, CheckCircle2, XCircle, LogIn, LogOut, UserX, PlusCircle, MailCheck, MailWarning, History, DoorOpen,
+  MessageSquare, StickyNote, Trash2, Send, CheckCircle2, XCircle, LogIn, LogOut, UserX, PlusCircle, MailCheck, MailWarning, History, DoorOpen, Star,
 } from 'lucide-react'
 import { useActivityFor, useBookingNotes } from '../../lib/bookings'
 import { api, friendlyError } from '../../lib/firebase'
@@ -45,10 +45,11 @@ export default function BookingDetails() {
     b.checkedOutAt && { icon: LogOut, label: b.checkOutActual && b.checkOutActual < b.checkOut ? `Checked out early (${prettyDate(b.checkOutActual)})` : 'Checked out', at: b.checkedOutAt },
     b.noShowAt && { icon: UserX, label: 'Marked as no-show', at: b.noShowAt },
     b.cancelledAt && { icon: XCircle, label: `Cancelled by ${b.cancelledBy || 'guest'}`, at: b.cancelledAt },
-    ...['confirmation', 'cancellation'].map((k) => {
+    b.review && { icon: Star, label: `Guest left a ${b.review.rating}★ review`, at: b.review.at?.toDate?.() ?? b.review.at },
+    ...['confirmation', 'cancellation', 'review'].map((k) => {
       const e = b.emails?.[k]
       if (!e || e.status === 'skipped') return null
-      return { icon: e.status === 'sent' ? MailCheck : MailWarning, label: `${k === 'confirmation' ? 'Confirmation' : 'Cancellation'} email ${e.status === 'sent' ? 'sent' : 'failed'}`, at: e.at?.toDate?.() ?? e.at, by: e.status === 'sent' ? b.guest?.email : e.error }
+      return { icon: e.status === 'sent' ? MailCheck : MailWarning, label: `${{ confirmation: 'Confirmation', cancellation: 'Cancellation', review: 'Review request' }[k]} email ${e.status === 'sent' ? 'sent' : 'failed'}`, at: e.at?.toDate?.() ?? e.at, by: e.status === 'sent' ? b.guest?.email : e.error }
     }),
   ].filter(Boolean).sort((x, y) => (x.at?.getTime?.() ?? 0) - (y.at?.getTime?.() ?? 0))
 
@@ -58,6 +59,18 @@ export default function BookingDetails() {
     try {
       await api.resendConfirmation(b.ref)
       setMailMsg({ ok: true, text: `Confirmation sent to ${b.guest.email}.` })
+    } catch (e) {
+      setMailMsg({ ok: false, text: friendlyError(e) })
+    }
+    setMailBusy(false)
+  }
+
+  const askReview = async () => {
+    setMailBusy(true)
+    setMailMsg(null)
+    try {
+      await api.sendReviewInvite(b.ref)
+      setMailMsg({ ok: true, text: `Review link sent to ${b.guest.email}.` })
     } catch (e) {
       setMailMsg({ ok: false, text: friendlyError(e) })
     }
@@ -151,6 +164,12 @@ export default function BookingDetails() {
               <button className="btn btn-outline btn-sm" onClick={resend} disabled={mailBusy}>
                 {mailBusy ? <span className="spinner spinner--sm" /> : <Mail size={15} />} {b.emails?.confirmation?.status === 'sent' ? 'Resend confirmation email' : 'Send confirmation email'}
               </button>
+              {b.status === 'CheckedOut' && !b.review && (
+                <button className="btn btn-outline btn-sm" onClick={askReview} disabled={mailBusy}>
+                  <Star size={15} /> {b.emails?.review?.status === 'sent' ? 'Send review link again' : 'Ask for a review'}
+                </button>
+              )}
+              {b.review && <Link to="/admin/reviews" className="btn btn-outline btn-sm"><Star size={15} fill="currentColor" /> Rated {b.review.rating}/5 · see review</Link>}
               {mailMsg && <p className={`auth-msg ${mailMsg.ok ? '' : 'auth-msg--err'}`} role="status">{mailMsg.text}</p>}
             </div>
           )}

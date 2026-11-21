@@ -7,6 +7,8 @@ import { planStatusChange, nightsFrom } from './statusRules.js'
 import { logActivity } from './activity.js'
 import { checkUnitFor, typeHasUnits, unitRef } from './units.js'
 import { parseUnitNumber } from './unitRules.js'
+import { sendReviewInvite } from './reviews.js'
+import { later } from './notify.js'
 
 const ACTION_TEXT = { 'check-in': 'Checked in', 'check-out': 'Checked out', 'no-show': 'Marked no-show', 'undo-check-in': 'Undid check-in' }
 
@@ -48,6 +50,8 @@ export async function changeBookingStatus(staff, refParam, action, body = {}) {
   })
   await logActivity(staff, { action: `booking.${action}`, target: { type: 'booking', id: ref, label: ref },
     summary: `${ACTION_TEXT[action] || action}: ${b.guest?.firstName ?? ''} ${b.guest?.lastName ?? ''}, ${b.roomName}${result.unit ? `, room ${result.unit}` : ''}${result.freedNights ? ` (${result.freedNights} night${result.freedNights === 1 ? '' : 's'} released)` : ''}` })
+  // After check-out, email the guest a private "How was your stay?" link
+  if (action === 'check-out') later(sendReviewInvite(ref))
   return result
 }
 
